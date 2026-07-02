@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { bus } from "@/geoos/core/bus";
-import { BASE_PROVIDERS, resolveBase, type BaseView } from "@/lib/gis/providers";
+import { resolveBase, type BaseView } from "@/lib/gis/providers";
 import { generateOccurrences } from "@/lib/gis/simulated";
 import { SEV_COLOR } from "@/lib/gis/layer-defs";
 
