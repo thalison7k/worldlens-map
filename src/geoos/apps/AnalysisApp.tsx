@@ -1,10 +1,11 @@
 import { Compass, Square, Circle, Slash, MapPin } from "lucide-react";
+import { bus } from "@/geoos/core/bus";
 
 const TOOLS = [
-  { icon: MapPin, label: "Ponto" },
-  { icon: Slash, label: "Linha" },
-  { icon: Square, label: "Polígono / Retângulo" },
-  { icon: Circle, label: "Círculo" },
+  { id: "point", icon: MapPin, label: "Ponto" },
+  { id: "line", icon: Slash, label: "Linha" },
+  { id: "poly", icon: Square, label: "Polígono / Retângulo" },
+  { id: "circle", icon: Circle, label: "Círculo" },
 ];
 
 const METRICS = [
@@ -34,9 +35,17 @@ export default function AnalysisApp() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
-        {TOOLS.map(({ icon: Icon, label }) => (
+        {TOOLS.map(({ id, icon: Icon, label }) => (
           <button
-            key={label}
+            key={id}
+            onClick={() => {
+              bus.emit("filters.change", { key: "analysis.tool", value: id });
+              bus.emit("analysis.result", {
+                region: `demo:${id}`,
+                metrics: Object.fromEntries(METRICS.map((m) => [m.label, m.value])),
+              });
+              bus.emit("notify", { title: "Análise atualizada", message: `Ferramenta: ${label}`, level: "info" });
+            }}
             className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
           >
             <Icon className="h-3.5 w-3.5" />
