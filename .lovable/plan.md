@@ -1,59 +1,75 @@
-# Plano — Módulo "Mapa Global (World GIS)"
+# GeoOS 4.0 — Geospatial Operating System
 
-O escopo enviado é enorme (GIS mundial, múltiplos provedores, camadas ambientais, timeline, ISA com IA). Vou entregar em **fases**, começando por uma base sólida e navegável, com **arquitetura desacoplada** para plugar provedores/fontes depois sem reescrever nada.
+Reestruturação completa: o projeto deixa de ser um Dashboard GIS e passa a ser um **Sistema Operacional Geoespacial**. O mapa vira o núcleo (kernel visual), e todas as funcionalidades viram **apps** independentes que abrem em janelas dentro de um desktop.
 
-Antes de começar, preciso confirmar 3 pontos rápidos — respostas mudam bastante o esforço:
-
-1. **Escopo desta primeira entrega**: implemento a **Fase 1 completa** (mapa mundial navegável + camadas base + busca + geolocalização + mini-mapa/escala/coordenadas + estrutura de camadas temáticas com dados mock) e deixo Fases 2–4 como stubs prontos para plugar? Ou você quer que eu já ative alguma integração real específica agora (ex.: OpenWeather, NASA FIRMS para queimadas, INPE)?
-2. **Provedor de tiles**: começo apenas com **OSM + camadas gratuitas** (OSM padrão, CartoDB Light/Dark, Esri World Imagery para "satélite", OpenTopoMap para "terreno") — sem custo, sem chave? Mapbox/Google ficam como adaptadores prontos para você habilitar quando tiver chaves.
-3. **Ocorrências / ISA**: nesta fase uso **dados mock realistas** (gerados por região visível) para demonstrar HeatMap, clusters, timeline e o índice ISA 0–100? Quando você tiver o backend/fontes reais, trocamos a fonte sem mudar UI.
+Escopo grande demais para uma entrega só. Proponho **4 sub-fases** dentro da Fase 4, entregando cada uma como um marco funcional. Confirme se topa esse recorte antes de eu começar a construir.
 
 ---
 
-## Arquitetura
+## Fase 4.1 — GeoOS Core + Desktop Shell (entrega imediata)
 
-- **Stack de mapa**: `react-leaflet` + `leaflet` (OSM nativo, gratuito, sem chave). Plugins: `leaflet.markercluster` (clusters), `leaflet.heat` (heatmap), `leaflet-minimap`, `leaflet-rotate` (rotação), `leaflet-control-geocoder` (busca Nominatim).
-- **Camada de abstração de provedores** (`src/lib/gis/providers/`): interface `TileProvider` com implementações `osm`, `cartoLight`, `cartoDark`, `esriSatellite`, `openTopo`, stubs `mapbox`, `google`. Trocar provedor = trocar 1 linha.
-- **Camada de dados** (`src/lib/gis/sources/`): interface `DataSource<T>` (queimadas, chuvas, enchentes, sensores, ocorrências…). Implementação inicial `mockSource`; adaptadores vazios para OpenWeather, NASA FIRMS, INPE, IBGE, CEMADEN, Sentinel — só preencher a função `fetch()`.
-- **Geocoding** (`src/lib/gis/geocoding.ts`): Nominatim (OSM) para busca mundial + reverse geocoding. Adaptador plugável para Google/Mapbox depois. Busca por CEP via ViaCEP quando input casar com padrão brasileiro.
-- **ISA** (`src/lib/gis/isa.ts`): função pura que recebe agregados por região e devolve `{score 0-100, classification, trend, breakdown, explanation}`. Explicação textual gerada localmente na Fase 1; troca para Lovable AI Gateway na Fase 3.
+O esqueleto do SO. Sem isso nada mais funciona.
 
-## Fase 1 — o que entrego agora
+- **GeoOS Core** (`src/geoos/core/`): kernel client-side, singleton com Event Bus (pub/sub tipado), AppRegistry, WindowManager, WorkspaceManager, NotificationCenter, PermissionService, CacheStore. Zero dependência entre módulos — tudo conversa via eventos (`geoos.map.flyTo`, `geoos.app.open`, `geoos.layer.toggle`, etc).
+- **Desktop shell** (`src/geoos/desktop/`):
+  - Mapa em tela cheia como **wallpaper vivo** (o `WorldMap` atual vira `MapKernel`, sempre montado no fundo).
+  - **Sidebar fixa** à esquerda: workspaces + apps favoritos.
+  - **Dock inferior** estilo macOS: apps ativos + atalhos rápidos, com magnificação no hover.
+  - **Topbar**: busca global (⌘K), relógio, notificações, perfil.
+  - **Activity Center** (drawer direito): alertas, eventos, IA insights.
+  - **Command Palette** (⌘K): busca fuzzy de apps, comandos, lugares.
+- **Window System**: janelas flutuantes drag/resize/minimize/maximize, snap para bordas, empilhamento (z-index), estado persistido por workspace. Base em `react-rnd` (leve, sem dependências pesadas).
+- **Design system Enterprise**: refino dos tokens em `src/styles.css` para look Palantir/Linear — glassmorphism com `backdrop-filter`, dark+light, animações suaves via tokens de transição. Sem cor hardcoded.
+- Rota `/` vira a Home do GeoOS. `/map` permanece como deep-link que abre o app Geo Maps já maximizado.
 
-**Rotas**
+## Fase 4.2 — Apps Framework + primeiros 6 apps
 
-- `/map` — tela principal do GIS (rota nova, adicionada ao __root com metadata SEO própria).
+- **AppShell**: contrato `GeoApp` (`id, name, icon, description, permissions, defaultSize, component, onOpen, onClose`). Registro central; cada app é lazy-loaded via `React.lazy`.
+- **Workspaces**: 10 workspaces (Ambiental, Defesa Civil, Prefeitura, Mobilidade, Energia, Planejamento Urbano, Agricultura, Clima, Segurança, Satélite). Cada um define layers ativas, apps disponíveis, tema, filtros default. Persistidos em `localStorage` (migra para Cloud na 4.4).
+- **Apps entregues nesta fase**:
+  1. **Geo Maps** — o mapa em janela (na verdade controla o MapKernel de fundo).
+  2. **Layers** — o LayerManager atual como app.
+  3. **Analysis Engine** — ferramentas de desenho (ponto/linha/polígono/retângulo/círculo) via `leaflet-draw`; ao fechar seleção calcula área/perímetro/densidade de ocorrências/vegetação/temperatura média/sensores/infra — usa os simuladores existentes agregados por bbox.
+  4. **Smart Inspect** — clique em qualquer marker abre painel lateral com histórico, fotos, indicadores, objetos próximos (kNN sobre pontos visíveis).
+  5. **Temporal Engine** — Timeline mundial (ano/mês/dia/hora); a Timeline atual vira este app, com animação de ocorrências e vegetação.
+  6. **Command Center** — grid de KPIs, alertas, mini-mapa, feed em tempo real; parece um dashboard Datadog/Grafana.
 
-**UI (componentes em `src/components/gis/`)**
+## Fase 4.3 — IA (Geo AI Copilot + Insights + Decision + Simulation + Story)
 
-- `WorldMap` — container react-leaflet, zoom infinito, arrasto, rotação, geolocalização automática com fallback global.
-- `BaseLayerSwitcher` — Light / Dark / Satélite / Terreno / Híbrida / Rua.
-- `LayerPanel` — toggles individuais para as 17 camadas listadas (as sem fonte real ainda mostram badge "mock"/"em breve" mas já renderizam a estrutura).
-- `SearchBar` — busca unificada: endereço, CEP, bairro, cidade, estado, país, coordenadas (`-23.55, -46.63`). Detecta o tipo do input.
-- `LocationPanel` — cidade/estado/país/bairro/CEP/lat/lng/altitude/timezone/precisão do GPS ao vivo.
-- `Coordinates` + `ScaleBar` + `Compass` + `MiniMap` — HUD do mapa.
-- `Timeline` — slider temporal (hoje / 7d / 30d / 12m / comparação) que filtra as camadas dinâmicas.
-- `IsaPanel` — mostra ISA da região visível: nota, classificação, tendência, top-3 fatores, sugestões.
-- `HeatmapLayer` + `ClusterLayer` — recebem qualquer `DataSource`.
+Requer **Lovable Cloud + AI Gateway** (peço para habilitar quando chegar a hora).
 
-**Design system**
+- **Geo AI Copilot**: chat flutuante que controla o SO via linguagem natural. Comandos via LLM com tool-calling — cada tool dispara evento no Event Bus (`flyTo`, `toggleLayer`, `openApp`, `runAnalysis`, `generateReport`). Modelo default `google/gemini-3-flash-preview`.
+- **AI Insights**: ao abrir uma região, chama o LLM com o resumo agregado do Analysis Engine e devolve resumo/problemas/oportunidades/riscos/sugestões em markdown streaming.
+- **Decision Engine**: perguntas tipo "onde construir um hospital?" — heatmap de score combinando densidade populacional simulada, distância a hospitais existentes, acessibilidade viária; LLM explica o resultado.
+- **Simulation Engine**: usuário desenha "novo parque / nova avenida / plantar árvores"; sistema recomputa métricas locais e mostra delta antes/depois lado a lado.
+- **Geo Story**: gera relatório executivo em markdown + exporta PDF (`jspdf` + `html2canvas`).
 
-- Tokens novos em `src/styles.css` para tema GIS (dark-first, verde/âmbar/vermelho para ISA, contraste alto sobre imagery). Sem cores hardcoded em componentes.
+## Fase 4.4 — Persistência, Performance, Polimento
 
-**SEO / meta**
-
-- `/map` com `head()` próprio (title, description, og). `robots.txt` + `sitemap.xml` incluídos.
-
-## Fases seguintes (fora desta entrega, arquitetura já pronta)
-
-- **Fase 2** — plugar fontes reais gratuitas: NASA FIRMS (queimadas), OpenWeather (chuva/ar), USGS (sismos), IBGE (limites administrativos + código IBGE no reverse geocoding).
-- **Fase 3** — ISA com IA (Lovable AI Gateway) gerando explicação e sugestões por região; persistência de histórico no Lovable Cloud.
-- **Fase 4** — Mapbox / Google Maps (chaves do usuário), Sentinel-2, CEMADEN, sensores IoT, drones.
-
-## Dependências novas
-
-`leaflet`, `react-leaflet`, `@types/leaflet`, `leaflet.markercluster`, `@types/leaflet.markercluster`, `leaflet.heat`, `leaflet-minimap`, `leaflet-rotate`, `leaflet-control-geocoder`.
+- **Lovable Cloud**: workspaces, layouts de janela, favoritos, histórico do Copilot, relatórios salvos — tudo por usuário com RLS.
+- **Performance**: Web Worker para agregações do Analysis Engine, virtualização das listas do Command Center, cache LRU no Core, renderização incremental de clusters.
+- **Onboarding + atalhos**: tour rápido, cheatsheet ⌘K, tooltips.
+- **Notificações realtime** via Supabase Realtime.
+- **Testes** dos apps críticos com Playwright.
 
 ---
 
-Confirma as 3 perguntas acima (ou responde "toca o padrão") e eu executo a Fase 1 inteira de uma vez.
+## Detalhes técnicos-chave
+
+- **Event Bus**: `mitt` (2kb, tipado). Nenhum app importa outro app diretamente.
+- **Window manager**: `react-rnd` para drag/resize; z-index gerenciado pelo Core.
+- **State**: Zustand para o Core (leve, sem Provider hell), TanStack Query para dados server, `localStorage` para preferências até 4.4.
+- **Command palette**: `cmdk` (já é o `<Command>` do shadcn — reaproveitar).
+- **Map kernel**: `WorldMap` refatorado — o `<MapContainer>` fica montado uma única vez no `Desktop`, e apps enviam intents (`map.flyTo`, `map.setLayers`) via bus. Elimina o erro `_leaflet_pos` (mapa nunca é desmontado).
+- **Design**: glassmorphism (`bg-background/60 backdrop-blur-xl border border-white/10`), sombras suaves em token `--shadow-window`, transições em `--motion-*`. Dark-first, light disponível.
+- **SEO/head**: `/` = "GeoOS — Geospatial Operating System"; `/map` mantém metadata própria.
+
+---
+
+## O que peço para você confirmar antes de eu tocar em código
+
+1. **Recorte OK?** Executo **Fase 4.1 completa agora** (Core + Desktop shell + Window system + Command Palette + refactor do mapa para MapKernel), e nas mensagens seguintes fazemos 4.2 → 4.3 → 4.4. Ou você quer que eu tente empacotar 4.1 + 4.2 numa única entrega (fica bem maior, mais risco de bug)?
+2. **Habilito o Lovable Cloud já na 4.1** (para preparar auth e persistência de workspaces desde o começo) ou só quando chegar na 4.3/4.4?
+3. **Nome público**: uso **"GeoOS"** em toda a UI, ou você prefere outro branding (ex: "TerraOS", "Atlas", nome da sua empresa)?
+
+Responde as 3 e eu já começo a Fase 4.1.
