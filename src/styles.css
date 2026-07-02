@@ -158,6 +158,13 @@
   --isa-regular: oklch(0.82 0.18 90);
   --isa-bad: oklch(0.75 0.18 55);
   --isa-critical: oklch(0.65 0.22 25);
+
+  /* GeoOS 4.0 — desktop tokens */
+  --geoos-bg: oklch(0.13 0.02 250);
+  --geoos-surface: oklch(0.18 0.025 250);
+  --geoos-window: oklch(0.18 0.025 250 / 0.85);
+  --geoos-accent: oklch(0.78 0.17 195);
+  --geoos-accent-2: oklch(0.72 0.20 280);
 }
 
 .gis-shell { color: var(--gis-text); }
@@ -192,6 +199,12 @@
   color: oklch(0.15 0.02 250);
   border-color: transparent;
 }
+
+/* GeoOS desktop tuning */
+.geoos-shell { font-family: inherit; color: white; }
+.geoos-window { color: white; }
+.geoos-window-drag { cursor: grab; }
+.geoos-window-drag:active { cursor: grabbing; }
 
 /* Leaflet dark tuning for zoom controls */
 .leaflet-container { background: #0b1220; font-family: inherit; }
