@@ -45,9 +45,10 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const cfg = BASE_PROVIDERS[resolveBase(base)];
+    const { base: cfg, overlay } = resolveBase(base);
     if (baseRef.current) map.removeLayer(baseRef.current);
     baseRef.current = L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, subdomains: cfg.subdomains as any }).addTo(map);
+    if (overlay) L.tileLayer(overlay.url, { attribution: overlay.attribution, maxZoom: overlay.maxZoom, subdomains: overlay.subdomains as any, pane: "overlayPane" }).addTo(map);
   }, [base]);
 
   // bus subscriptions
@@ -66,18 +67,17 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       }
       if (visible === false) return;
       const bounds = map.getBounds();
-      const bbox: [number, number, number, number] = [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()];
-      const pts = generateOccurrences(bbox, 60);
+      const bbox: [number, number, number, number] = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const pts = generateOccurrences(bbox, 7 * 24 * 3600_000);
       const group = L.layerGroup();
       pts.forEach((o) => {
-        const sev = o.intensity > 0.7 ? "critica" : o.intensity > 0.4 ? "alta" : o.intensity > 0.2 ? "media" : "baixa";
         L.circleMarker([o.lat, o.lng], {
-          radius: 4 + o.intensity * 6,
-          color: SEV_COLOR[sev as keyof typeof SEV_COLOR],
+          radius: 5,
+          color: SEV_COLOR[o.severity],
           weight: 1,
-          fillOpacity: 0.6,
+          fillOpacity: 0.55,
         })
-          .bindPopup(`<b>${o.kind}</b><br/>Intensidade ${(o.intensity * 100).toFixed(0)}%`)
+          .bindPopup(`<b>${o.title}</b><br/>${o.neighborhood} · ${o.severity}`)
           .addTo(group);
       });
       group.addTo(map);
