@@ -35,7 +35,10 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Buscar apps, lugares, workspaces, comandos…" />
+      <CommandInput
+        placeholder="Buscar apps, lugares, workspaces, comandos…"
+        onValueChange={(q) => bus.emit("search.query", { q, source: "palette" })}
+      />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>
         <CommandGroup heading="Apps">
