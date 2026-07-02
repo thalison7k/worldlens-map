@@ -77,14 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "World GIS — Mapa Global Navegável" },
+      { name: "description", content: "Sistema GIS mundial com camadas ambientais, ocorrências, timeline espacial e Índice de Saúde Ambiental (ISA)." },
+      { name: "author", content: "World GIS" },
+      { property: "og:title", content: "World GIS — Mapa Global Navegável" },
+      { property: "og:description", content: "Explore qualquer região do planeta com camadas ambientais e monitoramento em tempo real." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {

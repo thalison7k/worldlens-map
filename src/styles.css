@@ -142,3 +142,66 @@
     color: var(--color-foreground);
   }
 }
+
+/* GIS module tokens */
+:root {
+  --gis-bg: oklch(0.18 0.03 250);
+  --gis-panel: oklch(0.22 0.03 250 / 0.92);
+  --gis-panel-border: oklch(1 0 0 / 0.08);
+  --gis-text: oklch(0.98 0.005 250);
+  --gis-muted: oklch(0.75 0.02 250);
+  --gis-accent: oklch(0.72 0.18 165);
+  --gis-warn: oklch(0.78 0.17 75);
+  --gis-danger: oklch(0.68 0.22 25);
+  --isa-excellent: oklch(0.75 0.18 155);
+  --isa-good: oklch(0.8 0.18 130);
+  --isa-regular: oklch(0.82 0.18 90);
+  --isa-bad: oklch(0.75 0.18 55);
+  --isa-critical: oklch(0.65 0.22 25);
+}
+
+.gis-shell { color: var(--gis-text); }
+.gis-panel {
+  background: var(--gis-panel);
+  border: 1px solid var(--gis-panel-border);
+  backdrop-filter: blur(12px);
+  color: var(--gis-text);
+  border-radius: 14px;
+}
+.gis-chip {
+  background: oklch(1 0 0 / 0.06);
+  border: 1px solid var(--gis-panel-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: var(--gis-muted);
+}
+.gis-btn {
+  background: oklch(1 0 0 / 0.06);
+  border: 1px solid var(--gis-panel-border);
+  color: var(--gis-text);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.gis-btn:hover { background: oklch(1 0 0 / 0.12); }
+.gis-btn[data-active="true"] {
+  background: var(--gis-accent);
+  color: oklch(0.15 0.02 250);
+  border-color: transparent;
+}
+
+/* Leaflet dark tuning for zoom controls */
+.leaflet-container { background: #0b1220; font-family: inherit; }
+.leaflet-bar a, .leaflet-bar a:hover {
+  background: var(--gis-panel);
+  color: var(--gis-text);
+  border-color: var(--gis-panel-border);
+}
+.leaflet-control-attribution {
+  background: oklch(0.18 0.03 250 / 0.7) !important;
+  color: var(--gis-muted) !important;
+}
+.leaflet-control-attribution a { color: var(--gis-accent) !important; }
