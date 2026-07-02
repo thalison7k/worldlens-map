@@ -16,9 +16,10 @@ export function Desktop() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    bus.emit("theme.change", { theme });
   }, [theme]);
 
-  // Bus → store bridge (apps request opens via bus)
+  // Bus → store bridge (apps request opens/notifications via bus, not directly)
   useEffect(() => {
     const onOpen = ({ appId }: { appId: string }) => openApp(appId);
     const onNotify = (p: { title: string; message?: string; level?: "info" | "warn" | "error" | "success" }) =>
