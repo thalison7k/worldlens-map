@@ -1,24 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[color:var(--gis-bg)] px-6 text-center text-[color:var(--gis-text)]">
+      <div className="gis-chip">World GIS · Fase 1</div>
+      <h1 className="max-w-2xl text-4xl font-semibold tracking-tight md:text-5xl">
+        Mapa Global navegável de todo o planeta
+      </h1>
+      <p className="max-w-xl text-sm text-[color:var(--gis-muted)] md:text-base">
+        Explore qualquer país, estado, cidade ou bairro com camadas ambientais,
+        ocorrências, timeline e Índice de Saúde Ambiental (ISA).
+      </p>
+      <Link
+        to="/map"
+        className="gis-btn"
+        style={{ padding: "12px 20px", fontSize: 14 }}
+        data-active="true"
+      >
+        Abrir mapa mundial →
+      </Link>
     </div>
   );
 }
