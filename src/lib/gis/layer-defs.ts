@@ -135,8 +135,7 @@ export const LAYER_DEFS: LayerDef[] = [
     build: (ctx) => {
       const raw = generateOccurrences(ctx.bbox, timeframeMs(ctx.timeframe));
       const list = filterOccurrences(raw, ctx.filters);
-      // @ts-expect-error markerClusterGroup is added by plugin
-      const group: L.MarkerClusterGroup = L.markerClusterGroup({ chunkedLoading: true, showCoverageOnHover: false });
+      const group = L.markerClusterGroup({ chunkedLoading: true, showCoverageOnHover: false });
       for (const o of list) {
         const m = L.circleMarker([o.lat, o.lng], {
           radius: o.severity === "critica" ? 9 : o.severity === "alta" ? 7 : o.severity === "media" ? 6 : 5,
