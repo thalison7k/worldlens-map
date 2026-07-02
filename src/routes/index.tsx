@@ -1,5 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Desktop } from "@/geoos/desktop/Desktop";
+import { lazy, Suspense, useEffect, useState } from "react";
+
+const Desktop = lazy(() => import("@/geoos/desktop/Desktop").then((m) => ({ default: m.Desktop })));
+
+function DesktopRoute() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="fixed inset-0 bg-[color:var(--geoos-bg,#0a0f1a)]" />;
+  return (
+    <Suspense fallback={<div className="fixed inset-0 bg-[color:var(--geoos-bg,#0a0f1a)]" />}>
+      <Desktop />
+    </Suspense>
+  );
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,5 +25,5 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => <Desktop />,
+  component: DesktopRoute,
 });
