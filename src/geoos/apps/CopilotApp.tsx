@@ -41,7 +41,12 @@ export default function CopilotApp() {
     } else if (lower.includes("analisar")) {
       bus.emit("app.open", { appId: "analysis" });
       reply = "Abrindo o Analysis Engine.";
+    } else if (lower.includes("timeline") || lower.includes("tempo")) {
+      bus.emit("app.open", { appId: "temporal" });
+      reply = "Abrindo o Temporal Engine.";
     }
+
+    bus.emit("search.query", { q: t, source: "copilot" });
 
     setTimeout(() => setMessages((m) => [...m, { role: "ai", text: reply }]), 200);
   }
