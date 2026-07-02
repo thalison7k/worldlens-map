@@ -1,4 +1,7 @@
+import { useCallback, useState } from "react";
 import { Activity, AlertTriangle, Flame, Droplets, Zap, Users } from "lucide-react";
+import { useBus } from "@/geoos/core/useBus";
+import type { TimelineRange } from "@/geoos/core/bus";
 
 const KPIS = [
   { icon: AlertTriangle, label: "Alertas ativos", value: 42, delta: "+6", accent: "0 70% 60%" },
@@ -19,12 +22,19 @@ const FEED = [
 ];
 
 export default function CommandCenterApp() {
+  const [tl, setTl] = useState<{ t: number; range: TimelineRange } | null>(null);
+  useBus(
+    "timeline.change",
+    useCallback((p: { t: number; range: TimelineRange }) => setTl(p), []),
+  );
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <div>
           <h3 className="text-sm font-semibold">Command Center</h3>
-          <p className="text-xs text-white/50">Operação em tempo real · última atualização há 3s</p>
+          <p className="text-xs text-white/50">
+            {tl ? `Janela temporal: ${tl.range} · t=${tl.t}` : "Operação em tempo real · última atualização há 3s"}
+          </p>
         </div>
         <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/70">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
