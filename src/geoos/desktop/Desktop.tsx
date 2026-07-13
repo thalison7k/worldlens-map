@@ -8,6 +8,7 @@ import { WindowLayer } from "./WindowLayer";
 import { CommandPalette } from "./CommandPalette";
 import { ActivityCenter } from "./ActivityCenter";
 import { bus } from "@/geoos/core/bus";
+import { startThemeEngine } from "@/geoos/core/theme";
 
 export function Desktop() {
   const theme = useGeoOS((s) => s.theme);
