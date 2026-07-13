@@ -23,6 +23,9 @@ export function Topbar() {
     return () => clearInterval(t);
   }, []);
 
+  const [paletteOpen, setThemePalette] = useState(false);
+
+
   return (
     <header className="pointer-events-none fixed left-16 right-0 top-0 z-40 flex h-11 items-center gap-3 border-b border-white/5 bg-[color:var(--geoos-surface)]/50 px-4 backdrop-blur-xl">
       <div className="pointer-events-auto flex items-center gap-2 text-xs">
