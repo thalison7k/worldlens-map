@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, Sun, Moon, Bot } from "lucide-react";
+import { Bell, Search, Sun, Moon, Bot, Palette } from "lucide-react";
 import { useGeoOS } from "@/geoos/core/store";
 import { WORKSPACES } from "@/geoos/core/workspaces";
+import { THEME_VARIANTS } from "@/geoos/core/theme";
+import { bus } from "@/geoos/core/bus";
 
 export function Topbar() {
   const workspaceId = useGeoOS((s) => s.workspaceId);
