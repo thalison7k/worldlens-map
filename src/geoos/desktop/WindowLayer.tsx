@@ -45,31 +45,51 @@ export function AppWindow({ state }: { state: WindowState }) {
           <div className="flex items-center gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); closeApp(state.appId); }}
-              className="grid h-3 w-3 place-items-center rounded-full bg-red-500/80 text-transparent hover:text-black/70"
+              className="grid h-3.5 w-3.5 place-items-center rounded-full bg-red-500 text-black/80 hover:bg-red-400"
               aria-label="Fechar"
+              title="Fechar"
             >
-              <X className="h-2 w-2" />
+              <X className="h-2.5 w-2.5" strokeWidth={3} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); minimizeApp(state.appId); }}
-              className="grid h-3 w-3 place-items-center rounded-full bg-yellow-500/80 text-transparent hover:text-black/70"
+              className="grid h-3.5 w-3.5 place-items-center rounded-full bg-yellow-500 text-black/80 hover:bg-yellow-400"
               aria-label="Minimizar"
+              title="Minimizar"
             >
-              <Minus className="h-2 w-2" />
+              <Minus className="h-2.5 w-2.5" strokeWidth={3} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); maximizeApp(state.appId); }}
-              className="grid h-3 w-3 place-items-center rounded-full bg-emerald-500/80 text-transparent hover:text-black/70"
+              className="grid h-3.5 w-3.5 place-items-center rounded-full bg-emerald-500 text-black/80 hover:bg-emerald-400"
               aria-label="Maximizar"
+              title="Maximizar"
             >
-              <Square className="h-2 w-2" />
+              <Square className="h-2 w-2" strokeWidth={3} />
             </button>
           </div>
-          <div className="ml-3 flex items-center gap-2 text-[11px] text-white/70">
+          <div className="ml-3 flex flex-1 items-center gap-2 text-[11px] text-white/70">
             <app.icon className="h-3 w-3" />
             <span>{app.name}</span>
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); minimizeApp(state.appId); }}
+            className="grid h-6 w-6 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white"
+            aria-label="Minimizar janela"
+            title="Minimizar"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); closeApp(state.appId); }}
+            className="grid h-6 w-6 place-items-center rounded-md text-white/70 hover:bg-red-500/80 hover:text-white"
+            aria-label="Fechar janela"
+            title="Fechar (liberar o mapa)"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
+
         <div className="flex-1 overflow-hidden text-white">
           <Suspense fallback={<div className="p-6 text-xs text-white/50">Carregando…</div>}>
             {createElement(app.component as any)}
