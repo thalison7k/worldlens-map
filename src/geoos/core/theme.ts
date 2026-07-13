@@ -184,11 +184,10 @@ export function startThemeEngine() {
   })();
   if (saved && THEME_BY_ID[saved]) applyVariant(saved);
 
-  bus.on("theme.change", ({ theme, variant }: { theme: ThemeMode; variant?: ThemeVariantId }) => {
-    // If a variant was requested, honor it; otherwise pick the default for that mode
-    // — but only if the current variant does not already match the requested mode.
-    if (variant && THEME_BY_ID[variant]) {
-      applyVariant(variant);
+  bus.on("theme.change", (payload) => {
+    const { theme, variant } = payload as { theme: ThemeMode; variant?: string };
+    if (variant && THEME_BY_ID[variant as ThemeVariantId]) {
+      applyVariant(variant as ThemeVariantId);
       return;
     }
     const current = THEME_BY_ID[currentVariant];
