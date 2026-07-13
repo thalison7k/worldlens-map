@@ -22,7 +22,7 @@ export type GeoOSEvents = {
   "search.query": { q: string; source?: string };
   "search.result": { q: string; kind: "place" | "app" | "workspace" | "layer"; label: string; payload?: unknown };
   "filters.change": { key: string; value: unknown };
-  "theme.change": { theme: "dark" | "light" };
+  "theme.change": { theme: "dark" | "light"; variant?: string };
   "timeline.change": { t: number; range: TimelineRange };
   "analysis.result": { region: string; metrics: Record<string, string | number> };
 };
