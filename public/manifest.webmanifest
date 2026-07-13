@@ -1,0 +1,16 @@
+{
+  "name": "GeoOS — Geospatial Operating System",
+  "short_name": "GeoOS",
+  "description": "Sistema Operacional Geoespacial com apps, workspaces e Copilot de IA.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" },
+    { "src": "/favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" }
+  ],
+  "categories": ["productivity", "utilities", "navigation"]
+}

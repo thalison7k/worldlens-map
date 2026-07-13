@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, Sun, Moon, Bot } from "lucide-react";
+import { Bell, Search, Sun, Moon, Bot, Palette } from "lucide-react";
 import { useGeoOS } from "@/geoos/core/store";
 import { WORKSPACES } from "@/geoos/core/workspaces";
+import { THEME_VARIANTS } from "@/geoos/core/theme";
+import { bus } from "@/geoos/core/bus";
 
 export function Topbar() {
   const workspaceId = useGeoOS((s) => s.workspaceId);
@@ -20,6 +22,9 @@ export function Topbar() {
     const t = setInterval(() => setTime(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  const [paletteOpen, setThemePalette] = useState(false);
+
 
   return (
     <header className="pointer-events-none fixed left-16 right-0 top-0 z-40 flex h-11 items-center gap-3 border-b border-white/5 bg-[color:var(--geoos-surface)]/50 px-4 backdrop-blur-xl">
@@ -53,10 +58,38 @@ export function Topbar() {
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
-          title="Alternar tema"
+          title="Alternar Light/Dark"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
+        <div className="relative">
+          <button
+            onClick={() => setThemePalette((v) => !v)}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
+            title="Variantes de tema"
+          >
+            <Palette className="h-4 w-4" />
+          </button>
+          {paletteOpen && (
+            <div className="absolute right-0 top-9 z-50 w-48 overflow-hidden rounded-lg border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1 shadow-2xl backdrop-blur-xl">
+              {THEME_VARIANTS.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setThemePalette(false);
+                    setTheme(v.mode);
+                    bus.emit("theme.change", { theme: v.mode, variant: v.id });
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-white/80 hover:bg-white/10"
+                >
+                  <span className="h-3 w-3 rounded-full" style={{ background: v.tokens.accent }} />
+                  <span>{v.label}</span>
+                  <span className="ml-auto text-[9px] uppercase tracking-widest text-white/40">{v.mode}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setActivity(!activityOpen)}
           className="relative grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"

@@ -8,6 +8,7 @@ import { WindowLayer } from "./WindowLayer";
 import { CommandPalette } from "./CommandPalette";
 import { ActivityCenter } from "./ActivityCenter";
 import { bus } from "@/geoos/core/bus";
+import { startThemeEngine } from "@/geoos/core/theme";
 
 export function Desktop() {
   const theme = useGeoOS((s) => s.theme);
@@ -15,9 +16,19 @@ export function Desktop() {
   const addNotification = useGeoOS((s) => s.addNotification);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    startThemeEngine();
+  }, []);
+
+  useEffect(() => {
     bus.emit("theme.change", { theme });
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    const onLoad = () => navigator.serviceWorker.register("/sw.js").catch(() => {});
+    window.addEventListener("load", onLoad);
+    return () => window.removeEventListener("load", onLoad);
+  }, []);
 
   // Bus → store bridge (apps request opens/notifications via bus, not directly)
   useEffect(() => {

@@ -94,8 +94,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     };
   }, []);
 
-  // reactive base when theme changes
-  useEffect(() => setBase(theme === "dark" ? "dark" : "light"), [theme]);
+  // Theme Engine owns base selection via `map.setBase`; no direct theme coupling here.
 
   return (
     <>
