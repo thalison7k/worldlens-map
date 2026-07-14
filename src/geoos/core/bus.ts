@@ -12,6 +12,8 @@ export type GeoOSEvents = {
   "map.flyTo": { lat: number; lng: number; zoom?: number };
   "map.setBase": { base: string };
   "map.toggleLayer": { layerId: string; visible?: boolean };
+  "map.bbox": { west: number; south: number; east: number; north: number; zoom: number };
+  "map.layerBuilt": { layerId: string; count: number };
   "map.setOpacity": { layerId: string; opacity: number };
   // system
   "notify": { title: string; message?: string; level?: "info" | "warn" | "error" | "success" };

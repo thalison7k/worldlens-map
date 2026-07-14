@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { LAYER_DEFS, CATEGORY_LABEL } from "@/lib/gis/layer-defs";
+import { LAYER_DEFS as BASE_DEFS, CATEGORY_LABEL } from "@/lib/gis/layer-defs";
+import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
+const LAYER_DEFS = [...BASE_DEFS, ...REAL_LAYER_DEFS];
 import { bus } from "@/geoos/core/bus";
 import { Eye, EyeOff } from "lucide-react";
 
