@@ -105,7 +105,7 @@ export function WindowLayer() {
   const windows = useGeoOS((s) => s.windows);
   return (
     <div className="pointer-events-none fixed inset-0 z-30">
-      <div className="pointer-events-auto relative h-full w-full">
+      <div className="pointer-events-none relative h-full w-full">
         {Object.values(windows).map((w) => (
           <AppWindow key={w.appId} state={w} />
         ))}
