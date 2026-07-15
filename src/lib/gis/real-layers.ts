@@ -2,6 +2,8 @@ import L from "leaflet";
 import { fetchEarthquakes, magColor } from "./providers/usgs";
 import { fetchPois, POI_STYLE, type Poi } from "./providers/overpass";
 import { fetchAirStations, pm25Color } from "./providers/openaq";
+import { fetchPlanes, type Plane } from "./providers/opensky";
+import { fetchBusStops } from "./providers/buses";
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
 /**
