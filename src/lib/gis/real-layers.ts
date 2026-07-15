@@ -183,7 +183,115 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       };
     }),
   },
+  {
+    id: "planes" as never,
+    label: "Aviões (OpenSky) — tempo real",
+    icon: "✈️",
+    category: "urbano",
+    order: 90,
+    defaultOpacity: 1,
+    legend: [
+      { color: "#38bdf8", label: "Em voo" },
+      { color: "#94a3b8", label: "No solo" },
+    ],
+    build: (ctx) => {
+      const group = L.layerGroup();
+      const markers = new Map<string, L.Marker>();
+      let disposed = false;
+      let inFlight = false;
+
+      const planeIcon = (p: Plane) => {
+        const color = p.onGround ? "#94a3b8" : "#38bdf8";
+        return L.divIcon({
+          html: `<div style="transform:rotate(${p.heading}deg);color:${color};font-size:18px;line-height:18px;filter:drop-shadow(0 0 6px ${color}88)">✈</div>`,
+          className: "gis-plane",
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
+      };
+
+      const refresh = async () => {
+        if (disposed || inFlight) return;
+        inFlight = true;
+        try {
+          const b = ctx.map.getBounds();
+          const bbox: [number, number, number, number] = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+          const spanLat = b.getNorth() - b.getSouth();
+          const spanLng = b.getEast() - b.getWest();
+          // OpenSky rejects huge bboxes with 400 — skip until zoomed in.
+          if (spanLat > 20 || spanLng > 40) return;
+          const planes = await fetchPlanes(bbox, 8_000);
+          if (disposed) return;
+          const seen = new Set<string>();
+          for (const p of planes) {
+            seen.add(p.icao);
+            const existing = markers.get(p.icao);
+            if (existing) {
+              existing.setLatLng([p.lat, p.lng]);
+              existing.setIcon(planeIcon(p));
+            } else {
+              const m = L.marker([p.lat, p.lng], { icon: planeIcon(p), riseOnHover: true }).bindPopup(
+                `<b>${p.callsign}</b> · ${p.country}<br/>Alt: ${Math.round(p.altitude)} m<br/>Vel: ${(p.velocity * 3.6).toFixed(0)} km/h<br/>Hdg: ${Math.round(p.heading)}°<br/><span style="color:#64748b">ICAO ${p.icao}</span>`,
+              );
+              m.addTo(group);
+              markers.set(p.icao, m);
+            }
+          }
+          // remove stale
+          for (const [icao, m] of markers) {
+            if (!seen.has(icao)) { group.removeLayer(m); markers.delete(icao); }
+          }
+        } catch { /* silent */ }
+        finally { inFlight = false; }
+      };
+
+      void refresh();
+      const iv = window.setInterval(refresh, 10_000);
+
+      return {
+        layer: group,
+        meta: { count: 0 },
+        setOpacity: (o) => markers.forEach((m) => m.setOpacity(o)),
+        dispose: () => { disposed = true; clearInterval(iv); group.clearLayers(); markers.clear(); },
+      };
+    },
+  },
+  {
+    id: "bus_stops" as never,
+    label: "Ônibus / paradas urbanas (OSM)",
+    icon: "🚌",
+    category: "urbano",
+    order: 50,
+    defaultOpacity: 1,
+    legend: [{ color: "#f59e0b", label: "Parada de ônibus" }],
+    build: asyncGroup(async (ctx, group) => {
+      const stops = await fetchBusStops(ctx.bbox, 300);
+      const markers: L.Marker[] = [];
+      for (const s of stops) {
+        const m = L.marker([s.lat, s.lng], {
+          icon: L.divIcon({
+            html: `<div style="font-size:16px;filter:drop-shadow(0 0 4px #f59e0b)">🚌</div>`,
+            className: "gis-poi",
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          }),
+        }).bindPopup(
+          `<b>${s.name}</b>${s.ref ? `<br/>Linha: ${s.ref}` : ""}${s.operator ? `<br/>Operador: ${s.operator}` : ""}`,
+        );
+        m.addTo(group);
+        markers.push(m);
+      }
+      return {
+        count: markers.length,
+        setOpacity: (o) => markers.forEach((m) => m.setOpacity(o)),
+      };
+    }),
+  },
 ];
 
 /** Layer ids that need to be rebuilt whenever the map bbox changes. */
-export const BBOX_DRIVEN_LAYERS = new Set(["poi_health", "poi_safety", "air_quality"]);
+export const BBOX_DRIVEN_LAYERS = new Set(["poi_health", "poi_safety", "air_quality", "bus_stops"]);
+
+/** Layers that manage their own realtime refresh and should NOT be rebuilt on bbox change. */
+export const SELF_REFRESHING_LAYERS = new Set(["planes"]);
+
