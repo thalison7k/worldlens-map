@@ -25,6 +25,21 @@ export function Desktop() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    // Never register the SW in Lovable preview/dev — it can serve stale HTML.
+    const h = window.location.hostname;
+    const isPreview =
+      !import.meta.env.PROD ||
+      window.self !== window.top ||
+      h.startsWith("id-preview--") ||
+      h.startsWith("preview--") ||
+      h.endsWith(".lovableproject.com") ||
+      h.endsWith(".lovableproject-dev.com") ||
+      h.endsWith(".beta.lovable.dev") ||
+      new URLSearchParams(window.location.search).has("sw-off");
+    if (isPreview) {
+      navigator.serviceWorker.getRegistrations?.().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      return;
+    }
     const onLoad = () => navigator.serviceWorker.register("/sw.js").catch(() => {});
     window.addEventListener("load", onLoad);
     return () => window.removeEventListener("load", onLoad);
