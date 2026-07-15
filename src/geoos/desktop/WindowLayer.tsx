@@ -27,7 +27,8 @@ export function AppWindow({ state }: { state: WindowState }) {
       minHeight={200}
       bounds="parent"
       dragHandleClassName="geoos-window-drag"
-      style={{ zIndex: state.z }}
+      className="pointer-events-auto"
+      style={{ zIndex: state.z, pointerEvents: "auto" }}
       onDragStop={(_, d) => !isMax && moveApp(state.appId, d.x, d.y)}
       onResizeStop={(_, __, refEl, ___, pos) => {
         resizeApp(state.appId, refEl.offsetWidth, refEl.offsetHeight);
@@ -104,7 +105,7 @@ export function WindowLayer() {
   const windows = useGeoOS((s) => s.windows);
   return (
     <div className="pointer-events-none fixed inset-0 z-30">
-      <div className="pointer-events-auto relative h-full w-full">
+      <div className="pointer-events-none relative h-full w-full">
         {Object.values(windows).map((w) => (
           <AppWindow key={w.appId} state={w} />
         ))}

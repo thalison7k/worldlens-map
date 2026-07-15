@@ -7,7 +7,7 @@ import "leaflet.markercluster";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
 import { LAYERS_BY_ID, LAYER_DEFS, type BuiltLayer, type LayerDef, type OccurrenceFilters, type Timeframe } from "@/lib/gis/layer-defs";
-import { REAL_LAYER_DEFS, BBOX_DRIVEN_LAYERS } from "@/lib/gis/real-layers";
+import { REAL_LAYER_DEFS, BBOX_DRIVEN_LAYERS, SELF_REFRESHING_LAYERS } from "@/lib/gis/real-layers";
 import type { BBox } from "@/lib/gis/simulated";
 
 const ALL_DEFS: Record<string, LayerDef> = {
@@ -163,18 +163,29 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       builtRef.current.get(layerId)?.setOpacity(opacity);
     };
     const onBbox = () => {
-      // rebuild bbox-driven layers when the view changes
-      builtRef.current.forEach((_b, id) => { if (BBOX_DRIVEN_LAYERS.has(id)) buildLayer(id); });
+      // rebuild bbox-driven layers when the view changes; skip self-refreshing
+      builtRef.current.forEach((_b, id) => {
+        if (BBOX_DRIVEN_LAYERS.has(id) && !SELF_REFRESHING_LAYERS.has(id)) buildLayer(id);
+      });
     };
-    const onTimeline = (p: { range: string }) => {
-      timeframeRef.current = (p.range as Timeframe) ?? timeframeRef.current;
-      builtRef.current.forEach((_b, id) => buildLayer(id));
+    const onTimeline = (p: { range: string; t?: number }) => {
+      const prev = timeframeRef.current;
+      const nextRange = (p.range as Timeframe) ?? prev;
+      // Only rebuild when the range bucket actually changes (avoid rebuilding
+      // every 250ms during play). Playback ticks (t) drive opacity/fade only.
+      if (nextRange === prev) {
+        const t = typeof p.t === "number" ? p.t / 100 : 1;
+        builtRef.current.forEach((b) => b.setOpacity(Math.max(0.15, t)));
+        return;
+      }
+      timeframeRef.current = nextRange;
+      builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
     };
     const onFilters = (p: { key: string; value: unknown }) => {
       const next = { ...filtersRef.current } as unknown as Record<string, unknown>;
       next[p.key] = p.value;
       filtersRef.current = next as unknown as OccurrenceFilters;
-      builtRef.current.forEach((_b, id) => buildLayer(id));
+      builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
     };
 
     bus.on("map.flyTo", onFly);

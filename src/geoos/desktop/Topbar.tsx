@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, Sun, Moon, Bot, Palette } from "lucide-react";
+import { Bell, Search, Sun, Moon, Bot, Palette, Download } from "lucide-react";
 import { useGeoOS } from "@/geoos/core/store";
 import { WORKSPACES } from "@/geoos/core/workspaces";
 import { THEME_VARIANTS } from "@/geoos/core/theme";
 import { bus } from "@/geoos/core/bus";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 export function Topbar() {
   const workspaceId = useGeoOS((s) => s.workspaceId);
@@ -24,6 +25,7 @@ export function Topbar() {
   }, []);
 
   const [paletteOpen, setThemePalette] = useState(false);
+  const { canInstall, install } = usePWAInstall();
 
 
   return (
@@ -55,6 +57,16 @@ export function Topbar() {
         >
           <Bot className="h-4 w-4" />
         </button>
+        {canInstall && (
+          <button
+            onClick={() => void install()}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[color:var(--geoos-accent)]/40 bg-[color:var(--geoos-accent)]/15 px-2.5 text-[11px] font-medium text-white hover:bg-[color:var(--geoos-accent)]/25"
+            title="Instalar como app (mobile ou desktop)"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Instalar app</span>
+          </button>
+        )}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
