@@ -25,6 +25,7 @@ export function Topbar() {
   }, []);
 
   const [paletteOpen, setThemePalette] = useState(false);
+  const { canInstall, install } = usePWAInstall();
 
 
   return (
