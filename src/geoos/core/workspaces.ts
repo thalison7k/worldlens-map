@@ -1,16 +1,18 @@
 import type { Workspace } from "./types";
 
+/**
+ * Environmental-only workspaces. Every workspace is scoped to environmental
+ * monitoring — urban/mobility/energy/security modules were removed.
+ */
 export const WORKSPACES: Workspace[] = [
-  { id: "environment", name: "Ambiental", description: "Monitoramento ambiental integrado.", accent: "155 60% 55%", apps: ["geo-maps", "layers", "fire-monitor", "flood-monitor", "environmental", "analysis", "temporal", "geo-story"], layers: ["occurrences", "fires", "rain", "vegetation"] },
-  { id: "civil-defense", name: "Defesa Civil", description: "Alertas, incidentes e resposta.", accent: "25 90% 60%", apps: ["geo-maps", "command-center", "flood-monitor", "fire-monitor", "smart-inspect", "temporal", "reports"], layers: ["occurrences", "floods", "fires", "rain"] },
-  { id: "city-hall", name: "Prefeitura", description: "Gestão urbana municipal.", accent: "220 80% 65%", apps: ["geo-maps", "urban-analytics", "infrastructure", "reports", "assets", "analysis", "geo-story"], layers: ["occurrences", "buildings", "roads"] },
-  { id: "mobility", name: "Mobilidade", description: "Trânsito, transporte, frotas.", accent: "195 85% 60%", apps: ["geo-maps", "transport", "urban-analytics", "command-center"], layers: ["transport", "roads"] },
-  { id: "energy", name: "Energia", description: "Redes, subestações, ativos.", accent: "50 90% 60%", apps: ["geo-maps", "energy", "infrastructure", "iot-center", "reports"], layers: ["energy"] },
-  { id: "planning", name: "Planejamento Urbano", description: "Simulações e projeções.", accent: "280 60% 65%", apps: ["geo-maps", "urban-analytics", "analysis", "simulation", "geo-story"], layers: ["buildings", "roads", "vegetation"] },
-  { id: "agriculture", name: "Agricultura", description: "NDVI, safras, clima.", accent: "100 60% 55%", apps: ["geo-maps", "environmental", "weather", "satellite", "temporal"], layers: ["vegetation", "rain"] },
-  { id: "climate", name: "Clima", description: "Monitoramento climático.", accent: "200 70% 60%", apps: ["geo-maps", "weather", "satellite", "temporal", "environmental"], layers: ["rain", "vegetation"] },
-  { id: "security", name: "Segurança", description: "Câmeras, sensores, incidentes.", accent: "0 70% 60%", apps: ["geo-maps", "command-center", "iot-center", "smart-inspect"], layers: ["occurrences", "sensors"] },
-  { id: "satellite", name: "Satélite", description: "Imagens e sensoriamento remoto.", accent: "170 60% 55%", apps: ["geo-maps", "satellite", "drone-center", "temporal"], layers: ["vegetation"] },
+  { id: "environment", name: "Ambiental", description: "Monitoramento ambiental integrado.", accent: "155 60% 55%", apps: ["geo-maps", "layers", "fire-monitor", "flood-monitor", "environmental", "analysis", "temporal", "geo-story"], layers: ["occurrences", "fires", "rain", "vegetation", "environmental", "air_quality"] },
+  { id: "fires", name: "Queimadas & Focos", description: "Focos ativos, radiação e histórico.", accent: "20 90% 55%", apps: ["geo-maps", "fire-monitor", "temporal", "analysis", "reports"], layers: ["fires", "vegetation", "drones"] },
+  { id: "deforestation", name: "Desmatamento", description: "NDVI, cobertura e perdas.", accent: "35 55% 45%", apps: ["geo-maps", "environmental", "temporal", "analysis", "geo-story"], layers: ["deforestation", "vegetation"] },
+  { id: "air-quality", name: "Qualidade do Ar", description: "PM2.5, PM10, AQI regional.", accent: "170 55% 55%", apps: ["geo-maps", "environmental", "iot-center", "reports"], layers: ["environmental", "air_quality", "sensors"] },
+  { id: "climate", name: "Clima & Chuva", description: "Radar de chuva, vento, temperatura.", accent: "200 70% 60%", apps: ["geo-maps", "weather", "temporal", "environmental"], layers: ["rain", "climate", "floods"] },
+  { id: "floods", name: "Enchentes & Rios", description: "Alertas hidrológicos e nível de rios.", accent: "215 75% 60%", apps: ["geo-maps", "flood-monitor", "iot-center", "temporal"], layers: ["floods", "rain", "sensors"] },
+  { id: "iot", name: "Sensores IoT", description: "Rede de sensores ambientais.", accent: "155 70% 55%", apps: ["geo-maps", "iot-center", "analysis", "reports"], layers: ["sensors", "environmental"] },
+  { id: "drones", name: "Drones Ambientais", description: "Sobrevoos e coletas em campo.", accent: "185 75% 60%", apps: ["geo-maps", "drone-center", "temporal", "analysis"], layers: ["drones", "fires", "deforestation"] },
 ];
 
 export const WORKSPACES_BY_ID = Object.fromEntries(WORKSPACES.map((w) => [w.id, w]));
