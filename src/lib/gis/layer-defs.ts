@@ -3,19 +3,19 @@ import {
   BBox, generateOccurrences, generateFires, fireColor, generateRainCells, rainColor,
   generateFloods, floodColor, generateDeforestation, generateNdviGrid, ndviColor,
   generateAirGrid, aqiColor, generateWindGrid, generateSensors, generateDrones,
-  interpolateRoute, generateTransport, TRANSPORT_COLOR, generateEnergy,
-  generateBuildings, BUILDING_ICONS, labelBuilding, generateRoads, ROAD_STYLE,
-  type Occurrence, type Sensor, type Drone, type TransportVehicle, type OccurrenceCategory, type Severity, type Status,
+  interpolateRoute,
+  type Occurrence, type Sensor, type Drone, type OccurrenceCategory, type Severity, type Status,
 } from "./simulated";
+
 
 export type Timeframe = "today" | "24h" | "7d" | "30d" | "12m";
 
 export type LayerId =
   | "occurrences" | "fires" | "rain" | "floods" | "deforestation" | "vegetation"
-  | "environmental" | "climate" | "sensors" | "drones" | "roads" | "buildings"
-  | "transport" | "energy" | "urban" | "satellite";
+  | "environmental" | "climate" | "sensors" | "drones";
 
-export type LayerCategory = "monitoramento" | "ambiental" | "clima" | "infra" | "urbano";
+export type LayerCategory = "monitoramento" | "ambiental" | "clima";
+
 
 export interface LayerDef {
   id: LayerId;
@@ -427,131 +427,13 @@ export const LAYER_DEFS: LayerDef[] = [
       };
     },
   },
-  {
-    id: "transport", label: "Transporte", icon: "🚌", category: "urbano",
-    order: 65, defaultOpacity: 1,
-    legend: Object.entries(TRANSPORT_COLOR).map(([k, c]) => ({ color: c, label: k })),
-    build: (ctx) => {
-      const vehicles = generateTransport(ctx.bbox);
-      const group = L.layerGroup();
-      const items: { m: L.CircleMarker; v: TransportVehicle }[] = [];
-      for (const v of vehicles) {
-        const c = TRANSPORT_COLOR[v.kind];
-        const pos = interpolateRoute(v.route, v.progress);
-        const m = L.circleMarker([pos.lat, pos.lng], { radius: 6, color: "#fff", fillColor: c, fillOpacity: 1, weight: 2 })
-          .bindPopup(`<b>${v.kind.toUpperCase()} ${v.id}</b><br/>Linha: ${v.line}<br/>Velocidade: ${v.speedKph} km/h`);
-        m.addTo(group);
-        items.push({ m, v });
-      }
-      return {
-        layer: group, meta: { count: vehicles.length },
-        setOpacity: (o) => items.forEach(({ m }) => m.setStyle({ opacity: o, fillOpacity: o })),
-        tick: (dt) => {
-          for (const it of items) {
-            it.v.progress = (it.v.progress + (dt / 1000) * (it.v.speedKph / 3600) / 2) % 1;
-            const pos = interpolateRoute(it.v.route, it.v.progress);
-            it.m.setLatLng([pos.lat, pos.lng]);
-          }
-        },
-        dispose: () => group.clearLayers(),
-      };
-    },
-  },
-  {
-    id: "energy", label: "Energia", icon: "⚡", category: "infra",
-    order: 35, defaultOpacity: 0.9,
-    legend: [{ color: "#fbbf24", label: "Linha de transmissão" }, { color: "#ef4444", label: "Falha" }, { color: "#10b981", label: "OK" }],
-    build: (ctx) => {
-      const { subs, lines } = generateEnergy(ctx.bbox);
-      const group = L.layerGroup();
-      for (const l of lines) {
-        L.polyline([l.from, l.to], { color: "#fbbf24", weight: 2, opacity: 0.7 })
-          .bindPopup(`<b>Linha de transmissão</b><br/>${l.kV} kV`).addTo(group);
-      }
-      for (const s of subs) {
-        const c = s.fault ? "#ef4444" : s.loadPct > 85 ? "#f59e0b" : "#10b981";
-        L.marker([s.lat, s.lng], {
-          icon: L.divIcon({ html: `<div style="font-size:18px;filter:drop-shadow(0 0 4px ${c})">⚡</div>`, className: "gis-energy", iconSize: [22, 22], iconAnchor: [11, 11] }),
-        })
-          .bindPopup(`<b>Subestação ${s.id}</b><br/>Capacidade: ${s.capacityMW} MW<br/>Carga: ${s.loadPct}%<br/>Status: <b style="color:${c}">${s.fault ? "FALHA" : "operacional"}</b>`)
-          .addTo(group);
-      }
-      return {
-        layer: group, meta: { count: subs.length + lines.length },
-        setOpacity: (o) => group.eachLayer((l) => { if ((l as L.Path).setStyle) (l as L.Path).setStyle({ opacity: o }); }),
-        dispose: () => group.clearLayers(),
-      };
-    },
-  },
-  {
-    id: "roads", label: "Estradas", icon: "🛣️", category: "infra",
-    order: 15, defaultOpacity: 0.85,
-    legend: Object.entries(ROAD_STYLE).map(([k, s]) => ({ color: s.color, label: k })),
-    build: (ctx) => {
-      const roads = generateRoads(ctx.bbox);
-      const group = L.layerGroup();
-      for (const r of roads) {
-        const style = ROAD_STYLE[r.klass];
-        L.polyline(r.path, { color: style.color, weight: style.weight, dashArray: style.dash, opacity: 0.8 })
-          .bindPopup(`<b>${r.klass}</b>`).addTo(group);
-      }
-      return {
-        layer: group, meta: { count: roads.length },
-        setOpacity: (o) => group.eachLayer((l) => (l as L.Path).setStyle?.({ opacity: 0.8 * o })),
-        dispose: () => group.clearLayers(),
-      };
-    },
-  },
-  {
-    id: "buildings", label: "Edificações (POIs)", icon: "🏥", category: "urbano",
-    order: 50, defaultOpacity: 1,
-    legend: [
-      { color: "#ef4444", label: "Hospital" }, { color: "#3b82f6", label: "Escola" },
-      { color: "#10b981", label: "UBS" }, { color: "#f59e0b", label: "Prefeitura" },
-      { color: "#a855f7", label: "Shopping" }, { color: "#06b6d4", label: "Mercado" },
-    ],
-    build: (ctx) => {
-      const buildings = generateBuildings(ctx.bbox);
-      const group = L.layerGroup();
-      for (const b of buildings) {
-        L.marker([b.lat, b.lng], {
-          icon: L.divIcon({ html: `<div style="font-size:20px">${BUILDING_ICONS[b.kind]}</div>`, className: "gis-building", iconSize: [24, 24], iconAnchor: [12, 12] }),
-        }).bindPopup(`<b>${b.name}</b><br/>Tipo: ${labelBuilding(b.kind)}<br/>Lat: ${b.lat.toFixed(5)}, Lng: ${b.lng.toFixed(5)}`).addTo(group);
-      }
-      return {
-        layer: group, meta: { count: buildings.length },
-        setOpacity: (o) => group.eachLayer((l) => (l as L.Marker).setOpacity?.(o)),
-        dispose: () => group.clearLayers(),
-      };
-    },
-  },
-  {
-    id: "urban", label: "Urbana (OSM)", icon: "🏙️", category: "urbano",
-    order: 5, defaultOpacity: 0.6,
-    legend: [{ color: "#94a3b8", label: "Tecido urbano OSM" }],
-    build: (ctx) => {
-      const tile = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", {
-        attribution: "© OpenStreetMap © CARTO", subdomains: "abcd", opacity: 0.6,
-      });
-      return { layer: tile, meta: { count: 1 }, setOpacity: (o) => tile.setOpacity(o), dispose: () => tile.remove() };
-    },
-  },
-  {
-    id: "satellite", label: "Satélite (overlay)", icon: "🛰️", category: "infra",
-    order: 2, defaultOpacity: 0.5,
-    legend: [{ color: "#22d3ee", label: "Imagery Esri" }],
-    build: (ctx) => {
-      const tile = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-        attribution: "Tiles © Esri", opacity: 0.5,
-      });
-      return { layer: tile, meta: { count: 1 }, setOpacity: (o) => tile.setOpacity(o), dispose: () => tile.remove() };
-    },
-  },
 ];
+
 
 export const LAYERS_BY_ID: Record<LayerId, LayerDef> = Object.fromEntries(LAYER_DEFS.map((d) => [d.id, d])) as Record<LayerId, LayerDef>;
 export const CATEGORY_LABEL: Record<LayerCategory, string> = {
-  monitoramento: "Monitoramento", ambiental: "Ambiental", clima: "Clima", infra: "Infraestrutura", urbano: "Urbano",
+  monitoramento: "Monitoramento", ambiental: "Ambiental", clima: "Clima",
 };
+
 
 export { SEV_COLOR, STATUS_COLOR, STATUS_LABEL };
