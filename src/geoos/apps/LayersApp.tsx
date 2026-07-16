@@ -18,9 +18,10 @@ export default function LayersApp() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-white/10 px-5 py-4">
-        <h3 className="text-sm font-semibold">Layers</h3>
-        <p className="text-xs text-white/50">17 camadas geoespaciais independentes.</p>
+        <h3 className="text-sm font-semibold">Camadas Ambientais</h3>
+        <p className="text-xs text-white/50">{LAYER_DEFS.length} camadas ambientais independentes.</p>
       </div>
+
       <div className="flex-1 overflow-y-auto p-3">
         {Object.entries(byCat).map(([cat, defs]) => (
           <div key={cat} className="mb-4">
