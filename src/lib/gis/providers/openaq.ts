@@ -27,10 +27,11 @@ export async function fetchAirStations(bbox: BBox, limit = 200): Promise<AirStat
   const [w, s, e, n] = bbox.map((v) => Math.round(v * 4) / 4) as BBox;
   const key = `openaq:${w}:${s}:${e}:${n}`;
   return swr(key, 10 * 60_000, async () => {
-    const url = `https://api.openaq.org/v3/locations?bbox=${w},${s},${e},${n}&limit=${limit}`;
+    const url = `/api/public/openaq?bbox=${w},${s},${e},${n}&limit=${limit}`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`OpenAQ ${r.status}`);
     const data = (await r.json()) as { results: OpenAqLocation[] };
+
     const out: AirStation[] = [];
     for (const loc of data.results ?? []) {
       const c = loc.coordinates;
