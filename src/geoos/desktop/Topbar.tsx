@@ -15,7 +15,7 @@ export function Topbar() {
   const theme = useGeoOS((s) => s.theme);
   const setTheme = useGeoOS((s) => s.setTheme);
   const notifs = useGeoOS((s) => s.notifications);
-  const openApp = useGeoOS((s) => s.openApp);
+  
   const unread = notifs.filter((n) => !n.read).length;
   const [time, setTime] = useState(() => new Date());
 
