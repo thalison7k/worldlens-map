@@ -1,6 +1,7 @@
 import L from "leaflet";
 import { fetchEarthquakes, magColor } from "./providers/usgs";
 import { fetchAirStations, pm25Color } from "./providers/openaq";
+import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
 /**
@@ -38,10 +39,11 @@ function asyncGroup(
 export const REAL_LAYER_DEFS: LayerDef[] = [
   {
     id: "earthquakes" as never,
-    label: "Terremotos (USGS)",
+    label: "Terremotos (USGS, 24h)",
     icon: "🌐",
     category: "ambiental",
     order: 92,
+    defaultVisible: true,
     defaultOpacity: 1,
     legend: [
       { color: "#0ea5e9", label: "< 2" },
@@ -101,6 +103,40 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       return {
         count: markers.length,
         setOpacity: (o) => markers.forEach((m) => m.setStyle({ opacity: o, fillOpacity: 0.8 * o })),
+      };
+    }),
+  },
+  {
+    id: "el_nino" as never,
+    label: "El Niño / La Niña (NOAA ONI)",
+    icon: "🌊",
+    category: "clima",
+    order: 30,
+    defaultOpacity: 0.55,
+    legend: [
+      { color: "#b91c1c", label: "El Niño forte (≥ 1.5)" },
+      { color: "#ea580c", label: "El Niño (≥ 0.5)" },
+      { color: "#64748b", label: "Neutro" },
+      { color: "#0284c7", label: "La Niña (≤ -0.5)" },
+      { color: "#1e40af", label: "La Niña forte (≤ -1.5)" },
+    ],
+    build: asyncGroup(async (_ctx, group) => {
+      const data = await fetchEnso();
+      const color = ensoColor(data.phase);
+      // Niño 3.4 region: 5°S–5°N, 170°W–120°W
+      const bounds: L.LatLngBoundsExpression = [[-5, -170], [5, -120]];
+      const rect = L.rectangle(bounds, {
+        color, weight: 2, fillColor: color, fillOpacity: 0.35,
+      });
+      const anom = data.latest ? data.latest.anom.toFixed(2) : "—";
+      const when = data.latest ? `${data.latest.year}-${String(data.latest.month).padStart(2, "0")}` : "sem dados";
+      rect.bindPopup(
+        `<b>ENSO — Niño 3.4</b><br/>Fase: <b>${ensoLabel(data.phase)}</b><br/>Anomalia SST: <b>${anom} °C</b><br/>Referência: ${when}<br/><span style="opacity:.7">Fonte: NOAA CPC (ONI)</span>`,
+      );
+      rect.addTo(group);
+      return {
+        count: 1,
+        setOpacity: (o) => rect.setStyle({ opacity: o, fillOpacity: 0.35 * o }),
       };
     }),
   },
