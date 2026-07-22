@@ -6,14 +6,16 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
-import { LAYERS_BY_ID, LAYER_DEFS, type BuiltLayer, type LayerDef, type OccurrenceFilters, type Timeframe } from "@/lib/gis/layer-defs";
+import type { BuiltLayer, LayerDef, OccurrenceFilters, Timeframe } from "@/lib/gis/layer-defs";
 import { REAL_LAYER_DEFS, BBOX_DRIVEN_LAYERS, SELF_REFRESHING_LAYERS } from "@/lib/gis/real-layers";
 import type { BBox } from "@/lib/gis/simulated";
 
-const ALL_DEFS: Record<string, LayerDef> = {
-  ...LAYERS_BY_ID,
-  ...Object.fromEntries(REAL_LAYER_DEFS.map((d) => [d.id, d])),
-};
+// GeoOS is scoped to environmental monitoring only — the map exposes strictly
+// the real-data environmental layers (USGS · OpenAQ · NOAA ONI). Any legacy
+// urban / transport / infrastructure layers are intentionally NOT registered.
+const ALL_DEFS: Record<string, LayerDef> = Object.fromEntries(
+  REAL_LAYER_DEFS.map((d) => [d.id, d]),
+);
 
 const DEFAULT_FILTERS: OccurrenceFilters = {
   category: "all",
