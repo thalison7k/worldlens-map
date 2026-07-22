@@ -144,7 +144,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     if (!map) return;
     // wait a tick so base layer paints first
     const t = setTimeout(() => {
-      LAYER_DEFS.filter((d) => d.defaultVisible).forEach((d) => buildLayer(d.id));
+      REAL_LAYER_DEFS.filter((d) => d.defaultVisible).forEach((d) => buildLayer(d.id));
     }, 100);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
