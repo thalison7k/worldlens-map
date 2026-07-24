@@ -275,9 +275,24 @@ export default function LayersApp() {
         ))}
         <p className="mt-4 px-2 text-[10px] leading-relaxed text-white/35">
           Fontes: USGS Earthquake Hazards Program · OpenAQ v3 · NOAA CPC (ONI).
-          Cache SWR local · atualização automática a cada 5 min ·
+          Cache SWR local · atualização automática {intervalMs > 0 ? `a cada ${Math.round(intervalMs / 1000)}s` : "desativada"} ·
           última sincronização {new Date(updatedAt).toLocaleTimeString("pt-BR")}.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function formatAgo(ts: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 5) return "agora";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return `${h}h`;
+}
+
       </div>
     </div>
   );
