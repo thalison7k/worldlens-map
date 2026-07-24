@@ -257,6 +257,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("map.bbox", onBbox);
     bus.on("timeline.change", onTimeline);
     bus.on("filters.change", onFilters);
+    bus.on("map.refreshLayer", onManualRefresh);
+    bus.on("layers.setRefreshInterval", onSetInterval);
     return () => {
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
@@ -265,6 +267,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       bus.off("map.bbox", onBbox);
       bus.off("timeline.change", onTimeline);
       bus.off("filters.change", onFilters);
+      bus.off("map.refreshLayer", onManualRefresh);
+      bus.off("layers.setRefreshInterval", onSetInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
