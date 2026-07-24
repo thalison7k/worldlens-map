@@ -293,11 +293,6 @@ function formatAgo(ts: number): string {
   return `${h}h`;
 }
 
-      </div>
-    </div>
-  );
-}
-
 function Kpi({ label, value, tone = "ok" }: { label: string; value: string; tone?: "ok" | "warn" }) {
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1.5">
