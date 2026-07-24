@@ -211,9 +211,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       const wantVisible = visible ?? !exists;
       if (wantVisible) buildLayer(layerId);
       else destroyLayer(layerId);
+      resetRefreshTimers();
     };
     const onOpacity = ({ layerId, opacity }: { layerId: string; opacity: number }) => {
       builtRef.current.get(layerId)?.setOpacity(opacity);
+    };
+    const onManualRefresh = ({ layerId }: { layerId?: string }) => {
+      if (layerId) { if (builtRef.current.has(layerId)) buildLayer(layerId); }
+      else builtRef.current.forEach((_b, id) => buildLayer(id));
+    };
+    const onSetInterval = ({ ms }: { ms: number }) => {
+      refreshMsRef.current = Math.max(0, ms | 0);
+      resetRefreshTimers();
     };
     const onBbox = () => {
       // rebuild bbox-driven layers when the view changes; skip self-refreshing
