@@ -111,12 +111,36 @@ export default function LayersApp() {
           <button
             onClick={() => void refresh()}
             className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
-            title="Atualizar indicadores"
-            aria-label="Atualizar indicadores"
+            title="Atualizar agora"
+            aria-label="Atualizar agora"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
+
+        {/* Auto-refresh interval */}
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-white/40">Auto</span>
+          <div className="flex flex-1 flex-wrap gap-1">
+            {REFRESH_OPTIONS.map((o) => {
+              const on = o.ms === intervalMs;
+              return (
+                <button
+                  key={o.label}
+                  onClick={() => setIntervalMs(o.ms)}
+                  className={`rounded-md border px-1.5 py-0.5 text-[10px] transition ${
+                    on
+                      ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                      : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
 
         {/* Live KPI strip */}
         <div className="mt-3 grid grid-cols-3 gap-1.5 text-[10px]">
