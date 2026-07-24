@@ -243,7 +243,7 @@ export default function LayersApp() {
                       </span>
                     </button>
                     {on && (
-                      <div className="mt-1.5 flex flex-wrap gap-1 px-2">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1 px-2">
                         {d.legend.map((l) => (
                           <span
                             key={l.label}
@@ -256,6 +256,15 @@ export default function LayersApp() {
                             {l.label}
                           </span>
                         ))}
+                        {layerUpdated[d.id] && (
+                          <span
+                            className="ml-auto flex items-center gap-1 text-[9px] text-white/40"
+                            title={new Date(layerUpdated[d.id]).toLocaleString("pt-BR")}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                            {formatAgo(layerUpdated[d.id])}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
