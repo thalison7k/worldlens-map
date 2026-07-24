@@ -218,3 +218,16 @@
   color: var(--gis-muted) !important;
 }
 .leaflet-control-attribution a { color: var(--gis-accent) !important; }
+
+/* Mobile: freeze overlay markers/heat during pan/zoom for fluidity */
+.leaflet-container.geoos-interacting .leaflet-overlay-pane,
+.leaflet-container.geoos-interacting .leaflet-marker-pane,
+.leaflet-container.geoos-interacting .leaflet-shadow-pane {
+  opacity: 0.35;
+  transition: opacity 180ms ease-out;
+  will-change: opacity;
+}
+.leaflet-container .leaflet-overlay-pane,
+.leaflet-container .leaflet-marker-pane {
+  transition: opacity 220ms ease-out;
+}
