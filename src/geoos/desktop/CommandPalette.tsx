@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { useGeoOS } from "@/geoos/core/store";
 import { APPS } from "@/geoos/apps/registry";
-import { WORKSPACES } from "@/geoos/core/workspaces";
 import { bus } from "@/geoos/core/bus";
 
 const PLACES = [
@@ -14,13 +13,13 @@ const PLACES = [
   { label: "New York, US", lat: 40.7128, lng: -74.006, zoom: 11 },
   { label: "Tokyo, JP", lat: 35.6762, lng: 139.6503, zoom: 11 },
   { label: "Amazônia (visão)", lat: -5.5, lng: -63, zoom: 6 },
+  { label: "Niño 3.4 (Pacífico)", lat: 0, lng: -145, zoom: 3 },
 ];
 
 export function CommandPalette() {
   const open = useGeoOS((s) => s.paletteOpen);
   const setOpen = useGeoOS((s) => s.setPalette);
   const openApp = useGeoOS((s) => s.openApp);
-  const setWorkspace = useGeoOS((s) => s.setWorkspace);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,12 +35,12 @@ export function CommandPalette() {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Buscar apps, lugares, workspaces, comandos…"
+        placeholder="Buscar camadas ou lugares…"
         onValueChange={(q) => bus.emit("search.query", { q, source: "palette" })}
       />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>
-        <CommandGroup heading="Apps">
+        <CommandGroup heading="Módulos">
           {APPS.map((app) => (
             <CommandItem
               key={app.id}
@@ -69,22 +68,6 @@ export function CommandPalette() {
               }}
             >
               📍 {p.label}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Workspaces">
-          {WORKSPACES.map((w) => (
-            <CommandItem
-              key={w.id}
-              value={`ws ${w.name}`}
-              onSelect={() => {
-                setWorkspace(w.id);
-                setOpen(false);
-              }}
-            >
-              <span className="mr-2 h-2 w-2 rounded-full" style={{ background: `hsl(${w.accent})` }} />
-              {w.name} <span className="ml-auto text-xs text-muted-foreground">{w.description}</span>
             </CommandItem>
           ))}
         </CommandGroup>
