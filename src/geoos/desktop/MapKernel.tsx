@@ -55,6 +55,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       attributionControl: false,
       worldCopyJump: true,
       preferCanvas: true,
+      zoomAnimation: !isMobile,
+      fadeAnimation: !isMobile,
+      markerZoomAnimation: !isMobile,
+      wheelDebounceTime: isMobile ? 60 : 40,
+      wheelPxPerZoomLevel: isMobile ? 90 : 60,
+      zoomSnap: isMobile ? 0.5 : 0.25,
     });
     mapRef.current = map;
     L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
