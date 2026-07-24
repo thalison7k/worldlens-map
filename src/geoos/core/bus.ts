@@ -13,8 +13,10 @@ export type GeoOSEvents = {
   "map.setBase": { base: string };
   "map.toggleLayer": { layerId: string; visible?: boolean };
   "map.bbox": { west: number; south: number; east: number; north: number; zoom: number };
-  "map.layerBuilt": { layerId: string; count: number };
+  "map.layerBuilt": { layerId: string; count: number; updatedAt: number };
   "map.setOpacity": { layerId: string; opacity: number };
+  "map.refreshLayer": { layerId?: string };
+  "layers.setRefreshInterval": { ms: number };
   // system
   "notify": { title: string; message?: string; level?: "info" | "warn" | "error" | "success" };
   "palette.open": undefined;
