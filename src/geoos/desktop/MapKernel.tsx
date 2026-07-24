@@ -38,6 +38,10 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const builtRef = useRef<Map<string, BuiltLayer>>(new Map());
   const timeframeRef = useRef<Timeframe>("7d");
   const filtersRef = useRef<OccurrenceFilters>({ ...DEFAULT_FILTERS });
+  const refreshTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const refreshMsRef = useRef<number>(120_000); // default 2min
+  const isMobile = typeof window !== "undefined" &&
+    (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
   const [coords, setCoords] = useState({ lat: 0, lng: 0, zoom: 3 });
 
@@ -51,6 +55,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       attributionControl: false,
       worldCopyJump: true,
       preferCanvas: true,
+      zoomAnimation: !isMobile,
+      fadeAnimation: !isMobile,
+      markerZoomAnimation: !isMobile,
+      wheelDebounceTime: isMobile ? 60 : 40,
+      wheelPxPerZoomLevel: isMobile ? 90 : 60,
+      zoomSnap: isMobile ? 0.5 : 0.25,
     });
     mapRef.current = map;
     L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
@@ -62,15 +72,28 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       });
     };
     let moveT: ReturnType<typeof setTimeout> | null = null;
+    const bboxDebounce = isMobile ? 900 : 400;
     map.on("moveend zoomend", () => {
       setCoords((c) => ({ ...c, zoom: map.getZoom() }));
       if (moveT) clearTimeout(moveT);
-      moveT = setTimeout(emitBbox, 400);
+      moveT = setTimeout(emitBbox, bboxDebounce);
     });
-    map.on("mousemove", (e) => setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng })));
+    if (!isMobile) {
+      map.on("mousemove", (e) => setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng })));
+    }
     emitBbox();
 
-    // tick loop for animated layers
+    // Mobile: dim overlay panes during interaction to keep gestures fluid.
+    if (isMobile) {
+      const container = map.getContainer();
+      const setInteracting = (on: boolean) => {
+        container.classList.toggle("geoos-interacting", on);
+      };
+      map.on("movestart zoomstart", () => setInteracting(true));
+      map.on("moveend zoomend", () => setInteracting(false));
+    }
+
+    // tick loop for animated layers (only when any layer has a tick handler)
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -83,10 +106,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      refreshTimersRef.current.forEach((t) => clearInterval(t));
+      refreshTimersRef.current.clear();
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [isMobile]);
 
   // apply base layer
   useEffect(() => {
@@ -129,14 +154,40 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     built.layer.addTo(map);
     if (def.defaultOpacity != null) built.setOpacity(def.defaultOpacity);
     builtRef.current.set(id, built);
-    bus.emit("map.layerBuilt", { layerId: id, count: built.meta?.count ?? 0 });
+    const emit = (count: number) =>
+      bus.emit("map.layerBuilt", { layerId: id, count, updatedAt: Date.now() });
+    emit(built.meta?.count ?? 0);
+    // re-emit once async fetch resolves so the UI shows real counts + timestamp
+    if (built.ready) {
+      void built.ready.then((r) => {
+        if (builtRef.current.get(id) === built) emit(r.count);
+      });
+    }
   };
   const destroyLayer = (id: string) => {
     const map = mapRef.current;
     const b = builtRef.current.get(id);
     if (map && b) { map.removeLayer(b.layer); b.dispose(); }
     builtRef.current.delete(id);
+    const t = refreshTimersRef.current.get(id);
+    if (t) { clearInterval(t); refreshTimersRef.current.delete(id); }
   };
+
+  // reset per-layer auto-refresh timers based on current interval + active layers
+  const resetRefreshTimers = () => {
+    refreshTimersRef.current.forEach((t) => clearInterval(t));
+    refreshTimersRef.current.clear();
+    const ms = refreshMsRef.current;
+    if (ms <= 0) return;
+    builtRef.current.forEach((_b, id) => {
+      const iv = setInterval(() => {
+        if (document.hidden) return; // avoid background traffic
+        if (builtRef.current.has(id)) buildLayer(id);
+      }, ms);
+      refreshTimersRef.current.set(id, iv);
+    });
+  };
+
 
   // default visible layers on first mount
   useEffect(() => {
@@ -160,9 +211,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       const wantVisible = visible ?? !exists;
       if (wantVisible) buildLayer(layerId);
       else destroyLayer(layerId);
+      resetRefreshTimers();
     };
     const onOpacity = ({ layerId, opacity }: { layerId: string; opacity: number }) => {
       builtRef.current.get(layerId)?.setOpacity(opacity);
+    };
+    const onManualRefresh = ({ layerId }: { layerId?: string }) => {
+      if (layerId) { if (builtRef.current.has(layerId)) buildLayer(layerId); }
+      else builtRef.current.forEach((_b, id) => buildLayer(id));
+    };
+    const onSetInterval = ({ ms }: { ms: number }) => {
+      refreshMsRef.current = Math.max(0, ms | 0);
+      resetRefreshTimers();
     };
     const onBbox = () => {
       // rebuild bbox-driven layers when the view changes; skip self-refreshing
@@ -197,6 +257,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("map.bbox", onBbox);
     bus.on("timeline.change", onTimeline);
     bus.on("filters.change", onFilters);
+    bus.on("map.refreshLayer", onManualRefresh);
+    bus.on("layers.setRefreshInterval", onSetInterval);
     return () => {
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
@@ -205,6 +267,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       bus.off("map.bbox", onBbox);
       bus.off("timeline.change", onTimeline);
       bus.off("filters.change", onFilters);
+      bus.off("map.refreshLayer", onManualRefresh);
+      bus.off("layers.setRefreshInterval", onSetInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

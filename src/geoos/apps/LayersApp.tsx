@@ -23,20 +23,32 @@ type LiveStats = {
  * (USGS · OpenAQ · NOAA ONI) + painel de indicadores ao vivo alimentado
  * pelo Event Bus (`map.layerBuilt`) e por consultas SWR aos providers.
  */
+const REFRESH_OPTIONS: { label: string; ms: number }[] = [
+  { label: "Off", ms: 0 },
+  { label: "30s", ms: 30_000 },
+  { label: "1min", ms: 60_000 },
+  { label: "2min", ms: 120_000 },
+  { label: "5min", ms: 300_000 },
+  { label: "10min", ms: 600_000 },
+];
+
 export default function LayersApp() {
   const [visible, setVisible] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(REAL_LAYER_DEFS.map((d) => [d.id, !!d.defaultVisible])),
   );
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [layerUpdated, setLayerUpdated] = useState<Record<string, number>>({});
   const [enso, setEnso] = useState<EnsoData | null>(null);
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+  const [intervalMs, setIntervalMs] = useState<number>(120_000);
 
-  // live counts per active layer, emitted by the MapKernel
-  useBus("map.layerBuilt", ({ layerId, count }) => {
+  // live counts + per-layer timestamp, emitted by the MapKernel
+  useBus("map.layerBuilt", ({ layerId, count, updatedAt: ts }) => {
     setCounts((c) => ({ ...c, [layerId]: count }));
-    setUpdatedAt(Date.now());
+    setLayerUpdated((u) => ({ ...u, [layerId]: ts }));
+    setUpdatedAt(ts);
   });
 
   const refresh = async () => {
@@ -52,6 +64,8 @@ export default function LayersApp() {
         lastQuake: sorted[0] ?? null,
       });
       setUpdatedAt(Date.now());
+      // trigger map layer rebuilds too
+      bus.emit("map.refreshLayer", {});
     } catch { /* silent */ }
     setRefreshing(false);
   };
@@ -61,9 +75,12 @@ export default function LayersApp() {
     REAL_LAYER_DEFS.filter((d) => d.defaultVisible).forEach((d) => {
       bus.emit("map.toggleLayer", { layerId: d.id, visible: true });
     });
-    const iv = setInterval(() => void refresh(), 5 * 60_000);
+    bus.emit("layers.setRefreshInterval", { ms: intervalMs });
+    // KPI panel refresh mirrors selected interval (min 60s to spare APIs)
+    if (intervalMs <= 0) return;
+    const iv = setInterval(() => void refresh(), Math.max(60_000, intervalMs));
     return () => clearInterval(iv);
-  }, []);
+  }, [intervalMs]);
 
   const byCat = useMemo(
     () =>
@@ -94,12 +111,36 @@ export default function LayersApp() {
           <button
             onClick={() => void refresh()}
             className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
-            title="Atualizar indicadores"
-            aria-label="Atualizar indicadores"
+            title="Atualizar agora"
+            aria-label="Atualizar agora"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
+
+        {/* Auto-refresh interval */}
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-white/40">Auto</span>
+          <div className="flex flex-1 flex-wrap gap-1">
+            {REFRESH_OPTIONS.map((o) => {
+              const on = o.ms === intervalMs;
+              return (
+                <button
+                  key={o.label}
+                  onClick={() => setIntervalMs(o.ms)}
+                  className={`rounded-md border px-1.5 py-0.5 text-[10px] transition ${
+                    on
+                      ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                      : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
 
         {/* Live KPI strip */}
         <div className="mt-3 grid grid-cols-3 gap-1.5 text-[10px]">
@@ -202,7 +243,7 @@ export default function LayersApp() {
                       </span>
                     </button>
                     {on && (
-                      <div className="mt-1.5 flex flex-wrap gap-1 px-2">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1 px-2">
                         {d.legend.map((l) => (
                           <span
                             key={l.label}
@@ -215,6 +256,15 @@ export default function LayersApp() {
                             {l.label}
                           </span>
                         ))}
+                        {layerUpdated[d.id] && (
+                          <span
+                            className="ml-auto flex items-center gap-1 text-[9px] text-white/40"
+                            title={new Date(layerUpdated[d.id]).toLocaleString("pt-BR")}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                            {formatAgo(layerUpdated[d.id])}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -225,12 +275,22 @@ export default function LayersApp() {
         ))}
         <p className="mt-4 px-2 text-[10px] leading-relaxed text-white/35">
           Fontes: USGS Earthquake Hazards Program · OpenAQ v3 · NOAA CPC (ONI).
-          Cache SWR local · atualização automática a cada 5 min ·
+          Cache SWR local · atualização automática {intervalMs > 0 ? `a cada ${Math.round(intervalMs / 1000)}s` : "desativada"} ·
           última sincronização {new Date(updatedAt).toLocaleTimeString("pt-BR")}.
         </p>
       </div>
     </div>
   );
+}
+
+function formatAgo(ts: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 5) return "agora";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  return `${h}h`;
 }
 
 function Kpi({ label, value, tone = "ok" }: { label: string; value: string; tone?: "ok" | "warn" }) {

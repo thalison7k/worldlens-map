@@ -52,6 +52,7 @@ export interface BuiltLayer {
   tick?: (deltaMs: number) => void;
   dispose: () => void;
   meta?: { count: number };
+  ready?: Promise<{ count: number }>;
 }
 
 /* ---------- Utility ---------- */

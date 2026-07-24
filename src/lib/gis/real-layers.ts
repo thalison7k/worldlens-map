@@ -20,16 +20,18 @@ function asyncGroup(
     const group = L.layerGroup();
     let disposed = false;
     let setOp: (o: number) => void = () => { /* noop */ };
-    let count = 0;
-    void build(ctx, group)
+    const meta = { count: 0 };
+    const ready = build(ctx, group)
       .then((r) => {
-        if (disposed) { group.clearLayers(); return; }
-        if (r) { count = r.count; if (r.setOpacity) setOp = r.setOpacity; }
+        if (disposed) { group.clearLayers(); return { count: 0 }; }
+        if (r) { meta.count = r.count; if (r.setOpacity) setOp = r.setOpacity; }
+        return { count: meta.count };
       })
-      .catch(() => { /* silent — cache/fallback already handled */ });
+      .catch(() => ({ count: 0 }));
     return {
       layer: group,
-      meta: { count },
+      meta,
+      ready,
       setOpacity: (o) => setOp(o),
       dispose: () => { disposed = true; group.clearLayers(); },
     };
