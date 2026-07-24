@@ -23,20 +23,32 @@ type LiveStats = {
  * (USGS · OpenAQ · NOAA ONI) + painel de indicadores ao vivo alimentado
  * pelo Event Bus (`map.layerBuilt`) e por consultas SWR aos providers.
  */
+const REFRESH_OPTIONS: { label: string; ms: number }[] = [
+  { label: "Off", ms: 0 },
+  { label: "30s", ms: 30_000 },
+  { label: "1min", ms: 60_000 },
+  { label: "2min", ms: 120_000 },
+  { label: "5min", ms: 300_000 },
+  { label: "10min", ms: 600_000 },
+];
+
 export default function LayersApp() {
   const [visible, setVisible] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(REAL_LAYER_DEFS.map((d) => [d.id, !!d.defaultVisible])),
   );
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [layerUpdated, setLayerUpdated] = useState<Record<string, number>>({});
   const [enso, setEnso] = useState<EnsoData | null>(null);
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+  const [intervalMs, setIntervalMs] = useState<number>(120_000);
 
-  // live counts per active layer, emitted by the MapKernel
-  useBus("map.layerBuilt", ({ layerId, count }) => {
+  // live counts + per-layer timestamp, emitted by the MapKernel
+  useBus("map.layerBuilt", ({ layerId, count, updatedAt: ts }) => {
     setCounts((c) => ({ ...c, [layerId]: count }));
-    setUpdatedAt(Date.now());
+    setLayerUpdated((u) => ({ ...u, [layerId]: ts }));
+    setUpdatedAt(ts);
   });
 
   const refresh = async () => {
@@ -52,6 +64,8 @@ export default function LayersApp() {
         lastQuake: sorted[0] ?? null,
       });
       setUpdatedAt(Date.now());
+      // trigger map layer rebuilds too
+      bus.emit("map.refreshLayer", {});
     } catch { /* silent */ }
     setRefreshing(false);
   };
@@ -61,9 +75,12 @@ export default function LayersApp() {
     REAL_LAYER_DEFS.filter((d) => d.defaultVisible).forEach((d) => {
       bus.emit("map.toggleLayer", { layerId: d.id, visible: true });
     });
-    const iv = setInterval(() => void refresh(), 5 * 60_000);
+    bus.emit("layers.setRefreshInterval", { ms: intervalMs });
+    // KPI panel refresh mirrors selected interval (min 60s to spare APIs)
+    if (intervalMs <= 0) return;
+    const iv = setInterval(() => void refresh(), Math.max(60_000, intervalMs));
     return () => clearInterval(iv);
-  }, []);
+  }, [intervalMs]);
 
   const byCat = useMemo(
     () =>
