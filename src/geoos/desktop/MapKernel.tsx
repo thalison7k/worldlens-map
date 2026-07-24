@@ -38,6 +38,10 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const builtRef = useRef<Map<string, BuiltLayer>>(new Map());
   const timeframeRef = useRef<Timeframe>("7d");
   const filtersRef = useRef<OccurrenceFilters>({ ...DEFAULT_FILTERS });
+  const refreshTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const refreshMsRef = useRef<number>(120_000); // default 2min
+  const isMobile = typeof window !== "undefined" &&
+    (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
   const [coords, setCoords] = useState({ lat: 0, lng: 0, zoom: 3 });
 
