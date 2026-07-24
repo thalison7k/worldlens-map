@@ -72,15 +72,28 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       });
     };
     let moveT: ReturnType<typeof setTimeout> | null = null;
+    const bboxDebounce = isMobile ? 900 : 400;
     map.on("moveend zoomend", () => {
       setCoords((c) => ({ ...c, zoom: map.getZoom() }));
       if (moveT) clearTimeout(moveT);
-      moveT = setTimeout(emitBbox, 400);
+      moveT = setTimeout(emitBbox, bboxDebounce);
     });
-    map.on("mousemove", (e) => setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng })));
+    if (!isMobile) {
+      map.on("mousemove", (e) => setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng })));
+    }
     emitBbox();
 
-    // tick loop for animated layers
+    // Mobile: dim overlay panes during interaction to keep gestures fluid.
+    if (isMobile) {
+      const container = map.getContainer();
+      const setInteracting = (on: boolean) => {
+        container.classList.toggle("geoos-interacting", on);
+      };
+      map.on("movestart zoomstart", () => setInteracting(true));
+      map.on("moveend zoomend", () => setInteracting(false));
+    }
+
+    // tick loop for animated layers (only when any layer has a tick handler)
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -93,10 +106,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      refreshTimersRef.current.forEach((t) => clearInterval(t));
+      refreshTimersRef.current.clear();
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [isMobile]);
 
   // apply base layer
   useEffect(() => {
