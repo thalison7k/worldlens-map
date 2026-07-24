@@ -154,14 +154,40 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     built.layer.addTo(map);
     if (def.defaultOpacity != null) built.setOpacity(def.defaultOpacity);
     builtRef.current.set(id, built);
-    bus.emit("map.layerBuilt", { layerId: id, count: built.meta?.count ?? 0 });
+    const emit = (count: number) =>
+      bus.emit("map.layerBuilt", { layerId: id, count, updatedAt: Date.now() });
+    emit(built.meta?.count ?? 0);
+    // re-emit once async fetch resolves so the UI shows real counts + timestamp
+    if (built.ready) {
+      void built.ready.then((r) => {
+        if (builtRef.current.get(id) === built) emit(r.count);
+      });
+    }
   };
   const destroyLayer = (id: string) => {
     const map = mapRef.current;
     const b = builtRef.current.get(id);
     if (map && b) { map.removeLayer(b.layer); b.dispose(); }
     builtRef.current.delete(id);
+    const t = refreshTimersRef.current.get(id);
+    if (t) { clearInterval(t); refreshTimersRef.current.delete(id); }
   };
+
+  // reset per-layer auto-refresh timers based on current interval + active layers
+  const resetRefreshTimers = () => {
+    refreshTimersRef.current.forEach((t) => clearInterval(t));
+    refreshTimersRef.current.clear();
+    const ms = refreshMsRef.current;
+    if (ms <= 0) return;
+    builtRef.current.forEach((_b, id) => {
+      const iv = setInterval(() => {
+        if (document.hidden) return; // avoid background traffic
+        if (builtRef.current.has(id)) buildLayer(id);
+      }, ms);
+      refreshTimersRef.current.set(id, iv);
+    });
+  };
+
 
   // default visible layers on first mount
   useEffect(() => {
