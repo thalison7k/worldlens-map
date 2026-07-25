@@ -79,8 +79,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       moveT = setTimeout(emitBbox, bboxDebounce);
     });
     if (!isMobile) {
-      map.on("mousemove", (e) => setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng })));
+      map.on("mousemove", (e) => {
+        setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng }));
+        bus.emit("map.cursor", { lat: e.latlng.lat, lng: e.latlng.lng });
+      });
     }
+    map.on("click", (e) => bus.emit("map.click", { lat: e.latlng.lat, lng: e.latlng.lng }));
     emitBbox();
 
     // Mobile: dim overlay panes during interaction to keep gestures fluid.
@@ -250,6 +254,38 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
     };
 
+    const onFullscreen = () => {
+      const el = mapRef.current?.getContainer();
+      if (!el) return;
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void el.requestFullscreen?.().catch(() => {});
+    };
+    const onExport = ({ format }: { format: string }) => {
+      const m = mapRef.current;
+      if (!m) return;
+      if (format === "geojson" || format === "csv") {
+        const b = m.getBounds();
+        const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+        if (format === "geojson") {
+          const fc = {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: { name: "Área visível", zoom: m.getZoom(), exportedAt: new Date().toISOString() },
+              geometry: { type: "Polygon", coordinates: [[[bbox[0], bbox[1]], [bbox[2], bbox[1]], [bbox[2], bbox[3]], [bbox[0], bbox[3]], [bbox[0], bbox[1]]]] },
+            }],
+          };
+          download("bbox.geojson", "application/geo+json", JSON.stringify(fc, null, 2));
+        } else {
+          const csv = `name,west,south,east,north,zoom,exported_at\nÁrea visível,${bbox.join(",")},${m.getZoom()},${new Date().toISOString()}\n`;
+          download("bbox.csv", "text/csv", csv);
+        }
+        bus.emit("notify", { title: "Export pronto", message: `bbox.${format} baixado`, level: "success" });
+      } else if (format === "png") {
+        bus.emit("notify", { title: "PNG do mapa", message: "Use ⌘⇧S do navegador ou tela cheia + captura de tela.", level: "info" });
+      }
+    };
+
     bus.on("map.flyTo", onFly);
     bus.on("map.setBase", onBase);
     bus.on("map.toggleLayer", onToggle);
@@ -259,6 +295,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("filters.change", onFilters);
     bus.on("map.refreshLayer", onManualRefresh);
     bus.on("layers.setRefreshInterval", onSetInterval);
+    bus.on("map.fullscreen", onFullscreen);
+    bus.on("map.export", onExport);
     return () => {
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
@@ -269,9 +307,19 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       bus.off("filters.change", onFilters);
       bus.off("map.refreshLayer", onManualRefresh);
       bus.off("layers.setRefreshInterval", onSetInterval);
+      bus.off("map.fullscreen", onFullscreen);
+      bus.off("map.export", onExport);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function download(name: string, type: string, body: string) {
+    const blob = new Blob([body], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   return (
     <>
