@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
+import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
 import { Route as ApiPublicEnsoRouteImport } from './routes/api/public/enso'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -29,6 +30,11 @@ const ApiPublicOpenaqRoute = ApiPublicOpenaqRouteImport.update({
   path: '/api/public/openaq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicFirmsRoute = ApiPublicFirmsRouteImport.update({
+  id: '/api/public/firms',
+  path: '/api/public/firms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicEnsoRoute = ApiPublicEnsoRouteImport.update({
   id: '/api/public/enso',
   path: '/api/public/enso',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
+  '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
+  '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
 }
 export interface FileRoutesById {
@@ -52,18 +60,30 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
+  '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sitemap.xml' | '/api/public/enso' | '/api/public/openaq'
+  fullPaths:
+    | '/'
+    | '/sitemap.xml'
+    | '/api/public/enso'
+    | '/api/public/firms'
+    | '/api/public/openaq'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sitemap.xml' | '/api/public/enso' | '/api/public/openaq'
+  to:
+    | '/'
+    | '/sitemap.xml'
+    | '/api/public/enso'
+    | '/api/public/firms'
+    | '/api/public/openaq'
   id:
     | '__root__'
     | '/'
     | '/sitemap.xml'
     | '/api/public/enso'
+    | '/api/public/firms'
     | '/api/public/openaq'
   fileRoutesById: FileRoutesById
 }
@@ -71,6 +91,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPublicEnsoRoute: typeof ApiPublicEnsoRoute
+  ApiPublicFirmsRoute: typeof ApiPublicFirmsRoute
   ApiPublicOpenaqRoute: typeof ApiPublicOpenaqRoute
 }
 
@@ -97,6 +118,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOpenaqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/firms': {
+      id: '/api/public/firms'
+      path: '/api/public/firms'
+      fullPath: '/api/public/firms'
+      preLoaderRoute: typeof ApiPublicFirmsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/enso': {
       id: '/api/public/enso'
       path: '/api/public/enso'
@@ -111,6 +139,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPublicEnsoRoute: ApiPublicEnsoRoute,
+  ApiPublicFirmsRoute: ApiPublicFirmsRoute,
   ApiPublicOpenaqRoute: ApiPublicOpenaqRoute,
 }
 export const routeTree = rootRouteImport
