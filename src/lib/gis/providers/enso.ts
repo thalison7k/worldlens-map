@@ -1,4 +1,5 @@
 import { swr } from "../cache";
+import { bus } from "@/geoos/core/bus";
 
 export type EnsoPhase =
   | "strong-nino" | "nino" | "neutral" | "nina" | "strong-nina" | "unknown";
@@ -10,11 +11,19 @@ export type EnsoData = {
 };
 
 export async function fetchEnso(): Promise<EnsoData> {
-  return swr("enso:oni", 60 * 60_000, async () => {
-    const r = await fetch("/api/public/enso");
-    if (!r.ok) throw new Error(`ENSO ${r.status}`);
-    return (await r.json()) as EnsoData;
-  });
+  const started = performance.now();
+  try {
+    const data = await swr("enso:oni", 60 * 60_000, async () => {
+      const r = await fetch("/api/public/enso");
+      if (!r.ok) throw new Error(`ENSO ${r.status}`);
+      return (await r.json()) as EnsoData;
+    });
+    bus.emit("api.status", { id: "enso", label: "NOAA ENSO", ok: true, latencyMs: Math.round(performance.now() - started), ts: Date.now(), count: data.history?.length ?? 0 });
+    return data;
+  } catch (err) {
+    bus.emit("api.status", { id: "enso", label: "NOAA ENSO", ok: false, latencyMs: Math.round(performance.now() - started), ts: Date.now(), error: String(err) });
+    return { latest: null, phase: "unknown", history: [] };
+  }
 }
 
 export function ensoLabel(phase: EnsoPhase): string {
