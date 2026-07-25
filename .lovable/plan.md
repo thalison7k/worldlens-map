@@ -1,52 +1,52 @@
-# GeoOS → GIS Enterprise (production-ready)
+# Plano de Evolução — GeoOS Environmental Pro
 
-Escopo enorme. Vou executar em ondas curtas, cada uma entregando código funcional (não placeholder), mantendo o Event Bus como única forma de acoplamento. Confirme a ordem antes de começar — cada onda é 1 rodada de implementação + verificação.
+O escopo é enorme. Para entregar com qualidade (sem placeholders, sem botão morto, tudo com API real ou desativado), vou executar em **7 ondas incrementais**. Cada onda termina com build limpo e funcionalidades 100% operacionais antes da próxima.
 
-## Princípios (aplicados em toda onda)
-- MapKernel permanente; apps só conversam com ele via `bus`.
-- Providers desacoplados em `src/lib/gis/providers/*` implementando um contrato comum (`fetch(bbox, timeframe)` + `subscribe?`).
-- Cache em memória + `localStorage` com TTL; fallback silencioso para o gerador simulado quando a API falhar.
-- Sem chaves no bundle: `import.meta.env.VITE_*` para chaves públicas de tiles; chaves privadas atrás de server functions.
+## Onda 1 — Dashboard Ambiental + Status das APIs
+- Novo app `DashboardApp` fixado por padrão ao lado do `LayersApp`.
+- Cards: focos de incêndio (NASA FIRMS), terremotos 24h (USGS), AQI médio (OpenAQ), temperatura/vento/umidade médios (Open-Meteo — sem chave), alertas ativos, camadas carregadas, última atualização, status por API (online/offline + latência).
+- Auto-refresh no intervalo global já existente (`layers.setRefreshInterval`).
+- Skeleton loading e badges Online/Offline.
 
-## Onda 1 — Núcleo real do MapKernel + dados reais base
-- Refatorar `MapKernel` para gerenciar N camadas via um `LayerController` (cada layer = provider + renderer + tick).
-- Providers reais:
-  - **USGS Earthquakes** (GeoJSON público, sem chave) → camada `earthquakes`.
-  - **NASA FIRMS** (via endpoint público `firms/api/area/csv`, chave opcional via env) → camada `fires`.
-  - **OpenStreetMap Nominatim** já usada em `geocoding.ts` — reconectar ao SearchEngine.
-  - **Overpass API** → POIs (hospitais/escolas/delegacias) com bbox atual.
-- Sincronizar bbox: quando o mapa mover (`moveend`), o kernel emite `map.bbox` e cada provider ativo refaz fetch com debounce.
-- Cache: `src/lib/gis/cache.ts` (TTL + stale-while-revalidate).
+## Onda 2 — Camadas ambientais reais expandidas
+- Adicionar providers reais: **NASA FIRMS** (focos, via proxy server-side com chave em secret), **Open-Meteo** (clima, vento, umidade, UV — sem chave), **GDACS** (alertas ativos), **NDVI** via tiles GIBS (NASA).
+- Cada camada: opacidade, ordem, legenda dinâmica, contagem, última sync, cache SWR, atualização individual, indicador Online/Offline com tempo de resposta.
+- Popups completos por camada (queimadas: potência, satélite, confiança, hora; terremotos: mag, prof, tipo, distância; AQI: PM2.5/PM10/CO/NO2/SO2/O3).
 
-## Onda 2 — Filters + Timeline + Search totalmente ligados
-- TemporalEngine emite `timeline.change` → providers usam `timeframe` no fetch.
-- Filters (categoria, severidade, cidade) emitem `filters.change` → LayerController filtra features.
-- CommandPalette ⌘K: autocomplete Nominatim + resultados navegáveis; Enter dá `map.flyTo`.
-- Popups reais com dados do provider (magnitude, hora, fonte).
+## Onda 3 — Ferramentas SIG no mapa
+- Toolbar flutuante: medir distância, medir área, coordenadas do cursor, coordenadas do clique, copiar coordenadas, escala dinâmica, mini-mapa, bússola, tela cheia, imprimir, exportar PNG/GeoJSON/CSV/KML da vista atual.
+- Usar `leaflet-measure`, `leaflet-minimap`, `leaflet-easyprint` (ou implementação leve própria).
 
-## Onda 3 — Weather + AirQuality + Analysis Engine
-- Providers **OpenWeather** (chave via `VITE_OPENWEATHER_KEY`, opcional) e **OpenAQ** (sem chave).
-- Camadas: temperatura, chuva, vento (tile layers OWM) + heatmap AQI.
-- AnalysisApp: ativar draw (`leaflet-draw` — instalar), medir distância/área, buffer via turf.js, exportar GeoJSON. Emite `analysis.result` para CommandCenter consumir.
+## Onda 4 — Filtros avançados + Busca global
+- Painel de filtros: país, estado, cidade, raio, data, magnitude, temperatura, faixa AQI, categoria, intensidade. Emitidos via `filters.change`.
+- Busca global (⌘K já existe) integrada a Nominatim para cidade/país/estado/parque/coordenadas com fly-to.
 
-## Onda 4 — IoT Provider + Realtime
-- `src/lib/gis/iot/` com contrato `IoTProvider` e adaptadores stub para MQTT/WebSocket/Supabase Realtime/Firebase (estrutura ativa, ligável quando as credenciais existirem).
-- Um adaptador WebSocket "demo" que gera sensores vivos localmente para provar o pipeline (não é placeholder — é fonte real substituível).
-- Sensores viram camada com marker + popup + status/bateria/sinal.
+## Onda 5 — Timeline profissional + Analytics
+- Timeline com play/pause, velocidade (0.5x/1x/2x/4x), seleção de intervalo, comparar 2 datas (split), animação suave via `requestAnimationFrame`.
+- App **Analytics**: gráficos (Recharts) — queimadas/dia, terremotos por magnitude, AQI por cidade, temperatura, vento, ocorrências por país. Reativo aos dados carregados.
 
-## Onda 5 — CommandCenter dinâmico + PWA/perf/deploy
-- CommandCenter consome providers (contagem de incêndios, terremotos 24h, AQI médio no bbox) via bus — nada fixo.
-- PWA: `vite-plugin-pwa` com `generateSW`, NetworkFirst para HTML, ignora tiles cross-origin (remover `public/sw.js` atual e a skill kill-switch para migrar sem quebrar quem já instalou).
-- Auditoria: `tsgo`, `eslint`, build, Lighthouse manual via Playwright.
+## Onda 6 — Relatórios + IA + PWA polish
+- Geração de relatório PDF (jsPDF) com resumo executivo, mapa (canvas), gráficos, tabela e filtros aplicados. Exportar CSV/GeoJSON.
+- **Geo AI Assistant** via Lovable AI Gateway (`google/gemini-3.6-flash`) — chat com contexto do bbox/camadas ativas: explica dados, gera resumo, sugere análises.
+- PWA: revisar manifest, splash screens, ícones maskable, cache inteligente (network-first para APIs, cache-first para tiles), auto-update.
+
+## Onda 7 — Performance, qualidade e auditoria final
+- Virtualização de listas grandes, debounce/throttle nos eventos do mapa, AbortController em todas as fetches, memoização com `useMemo`/`React.memo`, cluster otimizado.
+- Auditoria: `bun run build`, `tsgo`, checar console/network, testar responsividade mobile/tablet/desktop, validar PWA no Lighthouse.
+
+## Referência da imagem (MSN Weather)
+Vou replicar a barra de ícones climáticos no topo do mapa (temperatura, chuva, radar, vento, nuvens, umidade, visibilidade, pressão, tempestades, neve, alertas, raios) como **toggles de camadas rápidas**, e a barra inferior com Hoje/Amanhã/Mais tarde ligada à timeline.
 
 ## Detalhes técnicos
-- Dependências novas: `@turf/turf`, `leaflet-draw` (+ tipos), `vite-plugin-pwa`. `mqtt` só na onda 4 se você confirmar.
-- Chaves opcionais que valem pedir depois: `VITE_NASA_FIRMS_MAP_KEY`, `VITE_OPENWEATHER_KEY`. Sem elas, os providers caem para endpoints públicos/limitados ou para o gerador simulado.
-- Nenhuma remoção de funcionalidade existente; apenas troca dos geradores por providers reais quando disponíveis.
+- Novos providers em `src/lib/gis/providers/` (firms.ts, openmeteo.ts, gdacs.ts, gibs.ts).
+- Proxies server-side em `src/routes/api/public/` para APIs com CORS ou chave (FIRMS).
+- Secret `FIRMS_MAP_KEY` via `secrets--add_secret` (grátis em firms.modaps.eosdis.nasa.gov).
+- Novos apps em `src/geoos/apps/`: DashboardApp, AnalyticsApp, ReportsApp, AIAssistantApp, FiltersApp.
+- Toolbar SIG em `src/geoos/desktop/MapToolbar.tsx`.
+- Barra de camadas rápidas estilo MSN em `src/geoos/desktop/QuickLayersBar.tsx`.
+- Store estende `zustand` com `apiStatus`, `filters`, `timelineState`.
 
-## Ordem sugerida de execução
-1. Onda 1 agora (base sólida, valor imediato: mapa com dados reais).
-2. Onda 2 na sequência.
-3. Ondas 3–5 conforme você validar cada anterior.
-
-Confirma que começo pela **Onda 1** e me diz se quer que eu já provisione as chaves opcionais (FIRMS/OpenWeather) via `add_secret`, ou seguimos só com os endpoints públicos sem chave.
+## Confirmações necessárias antes de começar
+1. Posso solicitar a chave gratuita **NASA FIRMS** como secret (`FIRMS_MAP_KEY`)? Sem ela, camada de queimadas fica desativada com aviso — não com dados fake.
+2. Confirmar uso do **Lovable AI Gateway** para o Geo AI Assistant (gratuito com créditos do workspace).
+3. Começo pela **Onda 1 (Dashboard + Status APIs)** e sigo em sequência, ou você quer priorizar outra onda primeiro?
