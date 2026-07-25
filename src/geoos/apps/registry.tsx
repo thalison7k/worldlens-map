@@ -1,18 +1,27 @@
 import { lazy } from "react";
-import { Layers } from "lucide-react";
+import { BarChart3, LayoutDashboard, Layers, Sparkles } from "lucide-react";
 import type { GeoApp } from "@/geoos/core/types";
 
 const LayersApp = lazy(() => import("./LayersApp"));
+const DashboardApp = lazy(() => import("./DashboardApp"));
+const AnalyticsApp = lazy(() => import("./AnalyticsApp"));
+const AIAssistantApp = lazy(() => import("./AIAssistantApp"));
 
-/**
- * The platform exposes a single functional module: Layers (environmental
- * monitoring). Every other legacy app was removed to keep the surface
- * consistent with the real-data providers wired into the MapKernel.
- */
 export const APPS: GeoApp[] = [
   {
+    id: "dashboard",
+    name: "Dashboard",
+    description: "Visão executiva ambiental em tempo real.",
+    icon: LayoutDashboard,
+    category: "core",
+    color: "200 90% 60%",
+    defaultSize: { width: 380, height: 640 },
+    singleton: true,
+    component: DashboardApp,
+  },
+  {
     id: "layers",
-    name: "Camadas Ambientais",
+    name: "Camadas",
     description: "Monitoramento ambiental em tempo real.",
     icon: Layers,
     category: "core",
@@ -20,6 +29,28 @@ export const APPS: GeoApp[] = [
     defaultSize: { width: 380, height: 620 },
     singleton: true,
     component: LayersApp,
+  },
+  {
+    id: "analytics",
+    name: "Analytics",
+    description: "Gráficos em tempo real da região visível.",
+    icon: BarChart3,
+    category: "core",
+    color: "280 70% 65%",
+    defaultSize: { width: 420, height: 640 },
+    singleton: true,
+    component: AnalyticsApp,
+  },
+  {
+    id: "ai",
+    name: "Geo AI",
+    description: "Assistente de IA contextual (Lovable AI).",
+    icon: Sparkles,
+    category: "core",
+    color: "45 90% 60%",
+    defaultSize: { width: 420, height: 560 },
+    singleton: true,
+    component: AIAssistantApp,
   },
 ];
 
