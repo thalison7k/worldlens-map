@@ -2,6 +2,18 @@ import mitt from "mitt";
 
 export type TimelineRange = "today" | "24h" | "7d" | "30d" | "12m" | "years";
 
+export type ApiStatus = {
+  id: string;
+  label: string;
+  ok: boolean;
+  latencyMs: number;
+  ts: number;
+  count?: number;
+  error?: string;
+};
+
+export type MapExportFormat = "png" | "geojson" | "csv" | "kml";
+
 export type GeoOSEvents = {
   // apps / windows
   "app.open": { appId: string; payload?: unknown };
@@ -16,8 +28,15 @@ export type GeoOSEvents = {
   "map.layerBuilt": { layerId: string; count: number; updatedAt: number };
   "map.setOpacity": { layerId: string; opacity: number };
   "map.refreshLayer": { layerId?: string };
+  "map.cursor": { lat: number; lng: number };
+  "map.click": { lat: number; lng: number };
+  "map.export": { format: MapExportFormat };
+  "map.fullscreen": undefined;
+  "map.measure": { mode: "distance" | "area" | "off" };
+  "map.measureResult": { mode: "distance" | "area"; value: number; unit: string };
   "layers.setRefreshInterval": { ms: number };
   // system
+  "api.status": ApiStatus;
   "notify": { title: string; message?: string; level?: "info" | "warn" | "error" | "success" };
   "palette.open": undefined;
   "activity.toggle": undefined;

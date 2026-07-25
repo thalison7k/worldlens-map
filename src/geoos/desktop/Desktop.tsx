@@ -7,6 +7,8 @@ import { Dock } from "./Dock";
 import { WindowLayer } from "./WindowLayer";
 import { CommandPalette } from "./CommandPalette";
 import { ActivityCenter } from "./ActivityCenter";
+import { MapToolbar } from "./MapToolbar";
+import { QuickLayersBar } from "./QuickLayersBar";
 import { bus } from "@/geoos/core/bus";
 import { startThemeEngine } from "@/geoos/core/theme";
 
@@ -69,6 +71,8 @@ export function Desktop() {
       <div className="pointer-events-none fixed inset-0 z-10 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
       <Sidebar />
       <Topbar />
+      <QuickLayersBar />
+      <MapToolbar />
       <WindowLayer />
       <Dock />
       <ActivityCenter />
