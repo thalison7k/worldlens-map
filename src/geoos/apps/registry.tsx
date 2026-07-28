@@ -1,11 +1,13 @@
 import { lazy } from "react";
-import { BarChart3, LayoutDashboard, Layers, Sparkles } from "lucide-react";
+import { BarChart3, LayoutDashboard, Layers, Radio, Sparkles } from "lucide-react";
 import type { GeoApp } from "@/geoos/core/types";
 
 const LayersApp = lazy(() => import("./LayersApp"));
 const DashboardApp = lazy(() => import("./DashboardApp"));
 const AnalyticsApp = lazy(() => import("./AnalyticsApp"));
 const AIAssistantApp = lazy(() => import("./AIAssistantApp"));
+const IoTSensorsApp = lazy(() => import("./IoTSensorsApp"));
+
 
 export const APPS: GeoApp[] = [
   {
@@ -42,6 +44,17 @@ export const APPS: GeoApp[] = [
     component: AnalyticsApp,
   },
   {
+    id: "iot",
+    name: "Sensores IoT",
+    description: "Sensores do dispositivo publicados na nuvem em tempo real.",
+    icon: Radio,
+    category: "core",
+    color: "195 90% 60%",
+    defaultSize: { width: 380, height: 620 },
+    singleton: true,
+    component: IoTSensorsApp,
+  },
+  {
     id: "ai",
     name: "Geo AI",
     description: "Assistente de IA contextual (Lovable AI).",
@@ -53,5 +66,6 @@ export const APPS: GeoApp[] = [
     component: AIAssistantApp,
   },
 ];
+
 
 export const APPS_BY_ID: Record<string, GeoApp> = Object.fromEntries(APPS.map((a) => [a.id, a]));

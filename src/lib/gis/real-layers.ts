@@ -4,6 +4,7 @@ import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
 import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
+import { fetchReadings } from "@/lib/iot/cloud";
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
 function asyncGroup(
@@ -45,7 +46,58 @@ const WEATHER_ICON: Record<number, string> = {
   95: "⛈️", 96: "⛈️", 99: "⛈️",
 };
 
+const IOT_COLOR: Record<string, string> = {
+  smartphone: "#38bdf8",
+  tablet: "#a78bfa",
+  desktop: "#34d399",
+};
+
 export const REAL_LAYER_DEFS: LayerDef[] = [
+  {
+    id: "iot_sensors" as never,
+    label: "Sensores IoT (nuvem)",
+    icon: "📡",
+    category: "monitoramento" as never,
+    order: 95,
+    defaultVisible: false,
+    defaultOpacity: 1,
+    legend: [
+      { color: "#38bdf8", label: "Smartphone" },
+      { color: "#a78bfa", label: "Tablet" },
+      { color: "#34d399", label: "Desktop" },
+    ],
+    build: asyncGroup(async (_ctx, group) => {
+      const rows = await fetchReadings(300);
+      const markers: L.CircleMarker[] = [];
+      for (const r of rows) {
+        const c = IOT_COLOR[r.device_kind] ?? "#38bdf8";
+        const m = L.circleMarker([r.lat, r.lng], {
+          radius: 7, color: c, fillColor: c, fillOpacity: 0.55, weight: 2,
+        }).bindPopup(
+          `<div style="min-width:230px">
+            <div style="font-weight:700;font-size:13px;color:${c}">📡 ${r.device_label || "Dispositivo anônimo"}</div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+              <b>Tipo:</b> ${r.device_kind} (${r.platform ?? "-"})<br/>
+              <b>Rede sem fio:</b> ${r.network_type ?? "n/d"}${r.downlink_mbps != null ? ` · ${r.downlink_mbps} Mbps` : ""}<br/>
+              <b>Bateria:</b> ${r.battery_pct != null ? `${r.battery_pct}%` : "n/d"}<br/>
+              <b>Temperatura no ponto:</b> ${r.temperature_c != null ? `${r.temperature_c.toFixed(1)} °C` : "n/d"}<br/>
+              <b>Precisão GPS:</b> ${r.accuracy_m != null ? `± ${Math.round(r.accuracy_m)} m` : "n/d"}<br/>
+              <b>Coords:</b> ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}<br/>
+              <b>Enviado:</b> ${new Date(r.created_at).toLocaleString("pt-BR")}<br/>
+              ${r.note ? `<b>Nota:</b> ${r.note}<br/>` : ""}
+              <b>Fonte:</b> banco de dados na nuvem (GeoOS)
+            </div>
+          </div>`,
+        );
+        m.addTo(group);
+        markers.push(m);
+      }
+      return {
+        count: markers.length,
+        setOpacity: (o) => markers.forEach((m) => m.setStyle({ opacity: o, fillOpacity: 0.55 * o })),
+      };
+    }),
+  },
   {
     id: "earthquakes" as never,
     label: "Terremotos (USGS · 24h)",
