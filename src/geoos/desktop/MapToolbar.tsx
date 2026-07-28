@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, Compass, Copy, Crosshair, Download, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 
@@ -34,6 +34,25 @@ export function MapToolbar() {
     try { await navigator.clipboard.writeText(text); bus.emit("notify", { title: "Copiado", message: text, level: "success" }); } catch { /* */ }
   };
 
+  const locate = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      bus.emit("notify", { title: "GPS indisponível", message: "Este dispositivo não expõe geolocalização.", level: "warn" });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        bus.emit("map.flyTo", { lat: pos.coords.latitude, lng: pos.coords.longitude, zoom: 12 });
+        bus.emit("notify", {
+          title: "Localização encontrada",
+          message: `± ${Math.round(pos.coords.accuracy)} m de precisão`,
+          level: "success",
+        });
+      },
+      (e) => bus.emit("notify", { title: "Falha no GPS", message: e.message, level: "error" }),
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+    );
+  };
+
   return (
     <div className="pointer-events-none fixed left-1/2 top-14 z-20 -translate-x-1/2 sm:left-16 sm:translate-x-0">
       <div className="pointer-events-auto flex items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 shadow-lg backdrop-blur-xl">
@@ -44,6 +63,9 @@ export function MapToolbar() {
           <Square className="h-3.5 w-3.5" />
         </ToolBtn>
         <span className="mx-0.5 h-4 w-px bg-white/10" />
+        <ToolBtn title="Minha localização (GPS)" onClick={locate}>
+          <LocateFixed className="h-3.5 w-3.5" />
+        </ToolBtn>
         <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
           <Maximize2 className="h-3.5 w-3.5" />
         </ToolBtn>
