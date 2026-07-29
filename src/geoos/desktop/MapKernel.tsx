@@ -64,8 +64,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       wheelDebounceTime: isMobile ? 60 : 40,
       wheelPxPerZoomLevel: isMobile ? 90 : 60,
       zoomSnap: isMobile ? 0.5 : 0.25,
-      updateWhenIdle: true,
-      updateWhenZooming: !isMobile,
     });
     mapRef.current = map;
     L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
