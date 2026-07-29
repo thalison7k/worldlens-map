@@ -203,7 +203,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#dc2626", label: "≥ 35°C" },
     ],
     build: asyncGroup(async (ctx, group) => {
-      const pts = await fetchWeather(ctx.bbox, 30);
+      const pts = await fetchWeather(ctx.bbox, 18);
       const markers: L.Marker[] = [];
       for (const p of pts) {
         const c = tempColor(p.temp);

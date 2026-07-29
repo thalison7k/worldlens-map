@@ -36,10 +36,13 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const baseRef = useRef<L.TileLayer | null>(null);
   const overlayRef = useRef<L.TileLayer | null>(null);
   const builtRef = useRef<Map<string, BuiltLayer>>(new Map());
+  const buildKeysRef = useRef<Map<string, string>>(new Map());
+  const buildingRef = useRef<Map<string, string>>(new Map());
   const timeframeRef = useRef<Timeframe>("7d");
   const filtersRef = useRef<OccurrenceFilters>({ ...DEFAULT_FILTERS });
   const refreshTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
-  const refreshMsRef = useRef<number>(120_000); // default 2min
+  const refreshMsRef = useRef<number>(300_000); // default 5min: stable for public APIs
+  const lastBboxKeyRef = useRef<string>("");
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
@@ -78,10 +81,23 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       if (moveT) clearTimeout(moveT);
       moveT = setTimeout(emitBbox, bboxDebounce);
     });
+    let cursorRaf = 0;
+    let lastCursorAt = 0;
+    let pendingCursor: L.LatLng | null = null;
     if (!isMobile) {
       map.on("mousemove", (e) => {
-        setCoords((c) => ({ ...c, lat: e.latlng.lat, lng: e.latlng.lng }));
-        bus.emit("map.cursor", { lat: e.latlng.lat, lng: e.latlng.lng });
+        const now = performance.now();
+        if (now - lastCursorAt < 90) return;
+        lastCursorAt = now;
+        pendingCursor = e.latlng;
+        if (cursorRaf) return;
+        cursorRaf = requestAnimationFrame(() => {
+          cursorRaf = 0;
+          if (!pendingCursor) return;
+          const { lat, lng } = pendingCursor;
+          setCoords((c) => ({ ...c, lat, lng }));
+          bus.emit("map.cursor", { lat, lng });
+        });
       });
     }
     map.on("click", (e) => bus.emit("map.click", { lat: e.latlng.lat, lng: e.latlng.lng }));
@@ -97,19 +113,20 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       map.on("moveend zoomend", () => setInteracting(false));
     }
 
-    // tick loop for animated layers (only when any layer has a tick handler)
-    let raf = 0;
+    // Low-frequency tick loop. Real environmental layers are mostly static;
+    // running requestAnimationFrame forever was wasting main-thread time.
     let last = performance.now();
-    const tick = (now: number) => {
+    const tickIv = setInterval(() => {
+      if (![...builtRef.current.values()].some((b) => b.tick)) return;
+      const now = performance.now();
       const dt = now - last;
       last = now;
       builtRef.current.forEach((b) => b.tick?.(dt));
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
+    }, isMobile ? 500 : 250);
 
     return () => {
-      cancelAnimationFrame(raf);
+      if (cursorRaf) cancelAnimationFrame(cursorRaf);
+      clearInterval(tickIv);
       refreshTimersRef.current.forEach((t) => clearInterval(t));
       refreshTimersRef.current.clear();
       map.remove();
@@ -127,12 +144,16 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     baseRef.current = L.tileLayer(cfg.url, {
       attribution: cfg.attribution,
       maxZoom: cfg.maxZoom,
+      updateWhenIdle: true,
+      updateWhenZooming: !isMobile,
       subdomains: cfg.subdomains as unknown as string[] | string | undefined,
     }).addTo(map);
     if (overlay) {
       overlayRef.current = L.tileLayer(overlay.url, {
         attribution: overlay.attribution,
         maxZoom: overlay.maxZoom,
+        updateWhenIdle: true,
+        updateWhenZooming: !isMobile,
         subdomains: overlay.subdomains as unknown as string[] | string | undefined,
         pane: "overlayPane",
       }).addTo(map);
@@ -140,10 +161,30 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   }, [base]);
 
   // helpers: build/destroy a layer by id
-  const buildLayer = (id: string) => {
+  const buildLayerKey = (id: string, map: L.Map) => {
+    const b = map.getBounds();
+    const step = isMobile ? 1 : 0.5;
+    const round = (v: number) => Math.round(v / step) * step;
+    const zoom = Math.round(map.getZoom() * 2) / 2;
+    return [
+      id,
+      round(b.getWest()), round(b.getSouth()), round(b.getEast()), round(b.getNorth()), zoom,
+      timeframeRef.current,
+      filtersRef.current.category, filtersRef.current.severity, filtersRef.current.status,
+      filtersRef.current.secretaria, filtersRef.current.query,
+    ].join(":");
+  };
+
+  const buildLayer = (id: string, opts: { force?: boolean } = {}) => {
     const map = mapRef.current;
     const def = ALL_DEFS[id];
     if (!map || !def) return;
+    const key = buildLayerKey(id, map);
+    if (!opts.force && buildKeysRef.current.get(id) === key) return;
+    if (!opts.force && buildingRef.current.has(id)) return;
+    const token = `${key}:${performance.now()}`;
+    buildingRef.current.set(id, token);
+    buildKeysRef.current.set(id, key);
     // dispose previous
     const prev = builtRef.current.get(id);
     if (prev) { map.removeLayer(prev.layer); prev.dispose(); builtRef.current.delete(id); }
@@ -165,7 +206,11 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     if (built.ready) {
       void built.ready.then((r) => {
         if (builtRef.current.get(id) === built) emit(r.count);
+      }).finally(() => {
+        if (buildingRef.current.get(id) === token) buildingRef.current.delete(id);
       });
+    } else {
+      buildingRef.current.delete(id);
     }
   };
   const destroyLayer = (id: string) => {
@@ -173,6 +218,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const b = builtRef.current.get(id);
     if (map && b) { map.removeLayer(b.layer); b.dispose(); }
     builtRef.current.delete(id);
+    buildKeysRef.current.delete(id);
+    buildingRef.current.delete(id);
     const t = refreshTimersRef.current.get(id);
     if (t) { clearInterval(t); refreshTimersRef.current.delete(id); }
   };
@@ -186,7 +233,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     builtRef.current.forEach((_b, id) => {
       const iv = setInterval(() => {
         if (document.hidden) return; // avoid background traffic
-        if (builtRef.current.has(id)) buildLayer(id);
+        if (builtRef.current.has(id)) buildLayer(id, { force: true });
       }, ms);
       refreshTimersRef.current.set(id, iv);
     });
@@ -221,14 +268,17 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       builtRef.current.get(layerId)?.setOpacity(opacity);
     };
     const onManualRefresh = ({ layerId }: { layerId?: string }) => {
-      if (layerId) { if (builtRef.current.has(layerId)) buildLayer(layerId); }
-      else builtRef.current.forEach((_b, id) => buildLayer(id));
+      if (layerId) { if (builtRef.current.has(layerId)) buildLayer(layerId, { force: true }); }
+      else builtRef.current.forEach((_b, id) => buildLayer(id, { force: true }));
     };
     const onSetInterval = ({ ms }: { ms: number }) => {
-      refreshMsRef.current = Math.max(0, ms | 0);
+      refreshMsRef.current = ms <= 0 ? 0 : Math.max(120_000, ms | 0);
       resetRefreshTimers();
     };
-    const onBbox = () => {
+    const onBbox = (p: { west: number; south: number; east: number; north: number; zoom: number }) => {
+      const bboxKey = `${Math.round(p.west)}:${Math.round(p.south)}:${Math.round(p.east)}:${Math.round(p.north)}:${Math.round(p.zoom * 2) / 2}`;
+      if (bboxKey === lastBboxKeyRef.current) return;
+      lastBboxKeyRef.current = bboxKey;
       // rebuild bbox-driven layers when the view changes; skip self-refreshing
       builtRef.current.forEach((_b, id) => {
         if (BBOX_DRIVEN_LAYERS.has(id) && !SELF_REFRESHING_LAYERS.has(id)) buildLayer(id);
