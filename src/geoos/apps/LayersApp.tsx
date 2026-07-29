@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
 import { fetchEnso, ensoLabel, ensoColor, type EnsoData } from "@/lib/gis/providers/enso";
 import { fetchEarthquakes, type Quake } from "@/lib/gis/providers/usgs";
@@ -25,8 +25,6 @@ type LiveStats = {
  */
 const REFRESH_OPTIONS: { label: string; ms: number }[] = [
   { label: "Off", ms: 0 },
-  { label: "30s", ms: 30_000 },
-  { label: "1min", ms: 60_000 },
   { label: "2min", ms: 120_000 },
   { label: "5min", ms: 300_000 },
   { label: "10min", ms: 600_000 },
@@ -42,16 +40,16 @@ export default function LayersApp() {
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
-  const [intervalMs, setIntervalMs] = useState<number>(120_000);
+  const [intervalMs, setIntervalMs] = useState<number>(300_000);
 
   // live counts + per-layer timestamp, emitted by the MapKernel
   useBus("map.layerBuilt", ({ layerId, count, updatedAt: ts }) => {
-    setCounts((c) => ({ ...c, [layerId]: count }));
-    setLayerUpdated((u) => ({ ...u, [layerId]: ts }));
-    setUpdatedAt(ts);
+    setCounts((c) => (c[layerId] === count ? c : { ...c, [layerId]: count }));
+    setLayerUpdated((u) => (u[layerId] === ts ? u : { ...u, [layerId]: ts }));
+    setUpdatedAt((prev) => Math.max(prev, ts));
   });
 
-  const refresh = async () => {
+  const refresh = useCallback(async (refreshMap = false) => {
     setRefreshing(true);
     try {
       const [e, quakes] = await Promise.all([fetchEnso(), fetchEarthquakes("day")]);
@@ -64,23 +62,22 @@ export default function LayersApp() {
         lastQuake: sorted[0] ?? null,
       });
       setUpdatedAt(Date.now());
-      // trigger map layer rebuilds too
-      bus.emit("map.refreshLayer", {});
+      if (refreshMap) bus.emit("map.refreshLayer", {});
     } catch { /* silent */ }
     setRefreshing(false);
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
-    REAL_LAYER_DEFS.filter((d) => d.defaultVisible).forEach((d) => {
-      bus.emit("map.toggleLayer", { layerId: d.id, visible: true });
-    });
+  }, [refresh]);
+
+  useEffect(() => {
     bus.emit("layers.setRefreshInterval", { ms: intervalMs });
-    // KPI panel refresh mirrors selected interval (min 60s to spare APIs)
+    // KPI panel refresh mirrors selected interval (min 2min to spare public APIs)
     if (intervalMs <= 0) return;
-    const iv = setInterval(() => void refresh(), Math.max(60_000, intervalMs));
+    const iv = setInterval(() => void refresh(), Math.max(120_000, intervalMs));
     return () => clearInterval(iv);
-  }, [intervalMs]);
+  }, [intervalMs, refresh]);
 
   const byCat = useMemo(
     () =>
@@ -109,7 +106,7 @@ export default function LayersApp() {
             </p>
           </div>
           <button
-            onClick={() => void refresh()}
+            onClick={() => void refresh(true)}
             className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
             title="Atualizar agora"
             aria-label="Atualizar agora"

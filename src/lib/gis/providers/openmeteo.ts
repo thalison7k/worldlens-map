@@ -97,14 +97,18 @@ export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]
   const started = performance.now();
   try {
     const data = await swr(key, 10 * 60_000, async () => {
-      const results = await Promise.allSettled(
-        picks.map(async (p) => {
-          const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility&daily=uv_index_max&timezone=auto&forecast_days=1`;
-          const r = await fetch(url);
-          if (!r.ok) throw new Error(String(r.status));
-          const j = (await r.json()) as OpenMeteoResp;
+      const latitudes = picks.map((p) => p.lat).join(",");
+      const longitudes = picks.map((p) => p.lng).join(",");
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitudes}&longitude=${longitudes}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility&daily=uv_index_max&timezone=auto&forecast_days=1`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(String(r.status));
+      const payload = (await r.json()) as OpenMeteoResp | OpenMeteoResp[];
+      const rows = Array.isArray(payload) ? payload : [payload];
+      return rows
+        .map((j, index) => {
+          const p = picks[index];
           const c = j.current;
-          if (!c) return null;
+          if (!p || !c) return null;
           return {
             id: `${p.city}`,
             lat: p.lat,
@@ -122,10 +126,7 @@ export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]
             cloud: c.cloud_cover,
             code: c.weather_code,
           } as WeatherPoint;
-        }),
-      );
-      return results
-        .map((r) => (r.status === "fulfilled" ? r.value : null))
+        })
         .filter((x): x is WeatherPoint => x !== null);
     });
     bus.emit("api.status", {
