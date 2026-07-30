@@ -95,9 +95,25 @@ type OpenMeteoResp = {
 export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]> {
   const [w, s, e, n] = bbox;
   const inBbox = GLOBAL_CITIES.filter((c) => c.lng >= w && c.lng <= e && c.lat >= s && c.lat <= n);
-  const pool = inBbox.length > 0 ? inBbox : GLOBAL_CITIES;
+  // When the user opens a location with no curated city inside the viewport,
+  // sample the viewport itself (center + quadrants) so ANY place on Earth
+  // still gets live weather instead of falling back to the world sample.
+  const spanLng = Math.abs(e - w);
+  const spanLat = Math.abs(n - s);
+  const zoomedIn = spanLng < 60 && spanLat < 40;
+  const viewportPicks =
+    inBbox.length === 0 && zoomedIn
+      ? [
+          { city: "Local selecionado", lat: (s + n) / 2, lng: (w + e) / 2 },
+          { city: "Setor NO", lat: s + spanLat * 0.75, lng: w + spanLng * 0.25 },
+          { city: "Setor NE", lat: s + spanLat * 0.75, lng: w + spanLng * 0.75 },
+          { city: "Setor SO", lat: s + spanLat * 0.25, lng: w + spanLng * 0.25 },
+          { city: "Setor SE", lat: s + spanLat * 0.25, lng: w + spanLng * 0.75 },
+        ]
+      : [];
+  const pool = inBbox.length > 0 ? inBbox : viewportPicks.length > 0 ? viewportPicks : GLOBAL_CITIES;
   const picks = pool.slice(0, max);
-  const key = `openmeteo:${picks.map((p) => p.city).join(",")}`;
+  const key = `openmeteo:${picks.map((p) => `${p.city}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join("|")}`;
   const started = performance.now();
   try {
     const data = await swr(key, 10 * 60_000, async () => {
