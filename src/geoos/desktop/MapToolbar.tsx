@@ -78,22 +78,6 @@ export function MapToolbar() {
         <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
           <Download className="h-3.5 w-3.5 rotate-90" />
         </ToolBtn>
-        <span className="mx-0.5 h-4 w-px bg-white/10" />
-        <div className="hidden items-center gap-1 rounded-md bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-white/70 sm:flex">
-          <Crosshair className="h-3 w-3" />
-          {cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}
-        </div>
-        {clicked && (
-          <button
-            onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
-            className="hidden items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-emerald-300 hover:bg-white/[0.08] sm:flex"
-            title="Copiar coordenadas do último clique"
-          >
-            <MousePointer2 className="h-3 w-3" />
-            {clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}
-            <Copy className="h-2.5 w-2.5" />
-          </button>
-        )}
         <Compass className="h-3.5 w-3.5 text-white/50" />
       </div>
       {(measure !== "off" || result) && (
@@ -101,6 +85,23 @@ export function MapToolbar() {
           {result ?? (measure === "distance" ? "Clique 2+ pontos no mapa para medir distância. Duplo clique finaliza." : "Clique 3+ pontos no mapa para medir área. Duplo clique finaliza.")}
         </div>
       )}
+      <div className="pointer-events-none fixed bottom-20 left-3 z-10 hidden flex-col items-start gap-1 sm:flex">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
+          <Crosshair className="h-3 w-3" />
+          {cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}
+        </div>
+        {clicked && (
+          <button
+            onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
+            className="pointer-events-auto flex items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08]"
+            title="Copiar coordenadas do último clique"
+          >
+            <MousePointer2 className="h-3 w-3" />
+            {clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}
+            <Copy className="h-2.5 w-2.5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
