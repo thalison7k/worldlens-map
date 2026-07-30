@@ -150,6 +150,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     icon: "🫁",
     category: "ambiental",
     order: 46,
+    defaultVisible: true,
     defaultOpacity: 0.9,
     legend: [
       { color: "#22c55e", label: "Bom" },
@@ -220,6 +221,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               <b>Sensação:</b> ${p.feels.toFixed(1)}°C<br/>
               <b>Umidade:</b> ${p.humidity}%<br/>
               <b>Vento:</b> ${p.windSpeed.toFixed(1)} km/h @ ${p.windDir}° (rajadas ${p.gust.toFixed(0)})<br/>
+              <b>Chuva agora:</b> ${p.precipitation.toFixed(1)} mm/h${p.rain > 0 ? ` (líquida ${p.rain.toFixed(1)} mm)` : ""}<br/>
               <b>Pressão:</b> ${p.pressure.toFixed(0)} hPa<br/>
               <b>Índice UV:</b> ${p.uv.toFixed(1)}<br/>
               <b>Visibilidade:</b> ${p.visibility.toFixed(1)} km<br/>
@@ -243,6 +245,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     icon: "🔥",
     category: "ambiental",
     order: 88,
+    defaultVisible: true,
     defaultOpacity: 0.9,
     legend: [
       { color: "#facc15", label: "< 5 MW" },
@@ -288,6 +291,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     icon: "🌿",
     category: "ambiental",
     order: 20,
+    defaultVisible: true,
     defaultOpacity: 0.65,
     legend: [
       { color: "#78350f", label: "Solo exposto (< 0.1)" },
@@ -317,11 +321,56 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     },
   },
   {
+    id: "rain_radar" as never,
+    label: "Chuva · radar global (RainViewer)",
+    icon: "🌧️",
+    category: "clima",
+    order: 40,
+    defaultVisible: true,
+    defaultOpacity: 0.7,
+    legend: [
+      { color: "#38bdf8", label: "Chuva fraca" },
+      { color: "#22c55e", label: "Moderada" },
+      { color: "#eab308", label: "Forte" },
+      { color: "#dc2626", label: "Muito forte / tempestade" },
+    ],
+    build: (ctx) => {
+      let tile: L.TileLayer | null = null;
+      let disposed = false;
+      let opacity = 0.7;
+      void (async () => {
+        try {
+          const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+          const j = (await r.json()) as { host: string; radar?: { past?: { path: string }[] } };
+          const frames = j.radar?.past ?? [];
+          const last = frames[frames.length - 1];
+          if (!last || disposed) return;
+          tile = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
+            opacity,
+            maxZoom: 12,
+            attribution: "RainViewer · radar de precipitação",
+          });
+          tile.addTo(ctx.map);
+          ctx.onBuilt?.({ count: 1 });
+        } catch {
+          ctx.onBuilt?.({ count: 0 });
+        }
+      })();
+      return {
+        layer: undefined,
+        meta: { count: 0 },
+        setOpacity: (o) => { opacity = o; tile?.setOpacity(o); },
+        dispose: () => { disposed = true; if (tile) ctx.map.removeLayer(tile); },
+      };
+    },
+  },
+  {
     id: "el_nino" as never,
     label: "El Niño / La Niña (NOAA)",
     icon: "🌊",
     category: "clima",
     order: 30,
+    defaultVisible: true,
     defaultOpacity: 0.55,
     legend: [
       { color: "#b91c1c", label: "El Niño forte (≥ 1.5)" },
