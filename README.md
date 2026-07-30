@@ -227,7 +227,7 @@ src/
 
 ---
 
-## 10. Perguntas de banca (respostas diretas)
+## 9. Perguntas de banca (respostas diretas)
 
 ### 10.1 Onde está o banco de dados em nuvem?
 
@@ -328,7 +328,7 @@ build/opacity/dispose), *Stale-While-Revalidate*, *Backend-for-Frontend* (rotas
 
 ---
 
-## 11. Camadas ativas por padrão
+## 10. Camadas ativas por padrão
 
 Ao abrir o sistema — e a cada nova localização aberta pela busca ou pelo GPS —
 as camadas abaixo já entram ligadas e recarregam para aquela área:
@@ -349,7 +349,7 @@ temperatura, chuva, vento, ar, fogo e vegetação — sem dado simulado.
 
 ---
 
-## 9. Créditos e fontes de dados
+## 12. Créditos e fontes de dados
 
 - U.S. Geological Survey — Earthquake Hazards Program
 - OpenAQ — plataforma aberta de qualidade do ar
