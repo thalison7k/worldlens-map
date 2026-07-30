@@ -7,6 +7,7 @@ import { useBus } from "@/geoos/core/useBus";
 import { Eye, EyeOff, RefreshCw, Activity } from "lucide-react";
 
 const CATEGORY_LABEL: Record<string, string> = {
+  monitoramento: "Monitoramento / IoT",
   ambiental: "Ambiental",
   clima: "Clima & Oceano",
 };
