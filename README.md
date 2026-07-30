@@ -349,7 +349,7 @@ temperatura, chuva, vento, ar, fogo e vegetação — sem dado simulado.
 
 ---
 
-## 12. Créditos e fontes de dados
+## 11. Créditos e fontes de dados
 
 - U.S. Geological Survey — Earthquake Hazards Program
 - OpenAQ — plataforma aberta de qualidade do ar
