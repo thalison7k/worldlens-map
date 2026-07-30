@@ -18,6 +18,8 @@ export type WeatherPoint = {
   visibility: number;
   cloud: number;
   code: number;
+  precipitation: number;
+  rain: number;
 };
 
 /**
@@ -84,6 +86,8 @@ type OpenMeteoResp = {
     weather_code: number;
     cloud_cover: number;
     visibility?: number;
+    precipitation?: number;
+    rain?: number;
   };
   daily?: { uv_index_max?: number[] };
 };
@@ -99,7 +103,7 @@ export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]
     const data = await swr(key, 10 * 60_000, async () => {
       const latitudes = picks.map((p) => p.lat).join(",");
       const longitudes = picks.map((p) => p.lng).join(",");
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitudes}&longitude=${longitudes}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility&daily=uv_index_max&timezone=auto&forecast_days=1`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitudes}&longitude=${longitudes}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility,precipitation,rain&daily=uv_index_max&timezone=auto&forecast_days=1`;
       const r = await fetch(url);
       if (!r.ok) throw new Error(String(r.status));
       const payload = (await r.json()) as OpenMeteoResp | OpenMeteoResp[];
@@ -125,6 +129,8 @@ export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]
             visibility: (c.visibility ?? 0) / 1000,
             cloud: c.cloud_cover,
             code: c.weather_code,
+            precipitation: c.precipitation ?? 0,
+            rain: c.rain ?? 0,
           } as WeatherPoint;
         })
         .filter((x): x is WeatherPoint => x !== null);
