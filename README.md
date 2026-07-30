@@ -225,7 +225,131 @@ src/
 
 ---
 
-## 9. Créditos e fontes de dados
+---
+
+## 9. Perguntas de banca (respostas diretas)
+
+### 10.1 Onde está o banco de dados em nuvem?
+
+Em um **Postgres gerenciado na nuvem (Lovable Cloud / Supabase)**, provisionado
+pelo próprio projeto — não há banco local nem arquivo embarcado. A tabela de
+telemetria é:
+
+```sql
+public.sensor_readings (
+  id uuid pk, device_id text, device_label text, device_kind text,
+  platform text, lat double precision, lng double precision,
+  accuracy_m, network_type, downlink_mbps, battery_pct,
+  temperature_c, air_pm25, note, created_at timestamptz
+)
+```
+
+Segurança: **RLS habilitada**. Políticas: leitura pública (mapa colaborativo),
+inserção pública validada (faixa de lat/lng, tamanho de `device_id`, limites de
+texto) e **UPDATE/DELETE negados** — nenhum cliente pode adulterar ou apagar
+leituras alheias. O acesso é feito via Data API (PostgREST) com chave
+publicável; segredos de serviço nunca chegam ao navegador.
+
+### 10.2 Como os sensores enviam os dados?
+
+O **próprio smartphone é o nó IoT**. `src/lib/iot/device.ts` lê as APIs web do
+dispositivo:
+
+| Dado | API do navegador |
+| --- | --- |
+| Localização + precisão | Geolocation API (`getCurrentPosition`) |
+| Rede sem fio (WiFi/4G/5G) e downlink | Network Information API |
+| Nível de bateria | Battery Status API |
+| Plataforma / tipo de aparelho | User-Agent Client Hints |
+
+`src/lib/iot/cloud.ts` enriquece a leitura com a **temperatura real do ponto**
+(Open-Meteo) e publica a linha na nuvem via HTTPS. O fluxo é
+`dispositivo → HTTPS/Data API → Postgres → Realtime → mapa`, ou seja um pipeline
+publish/subscribe clássico de IoT, sem broker próprio a manter.
+
+### 10.3 O sistema funciona em smartphone?
+
+Sim, é **PWA instalável** (`public/manifest.webmanifest` + `public/sw.js`),
+com ícone próprio, `display: standalone` e cache offline (network-first para
+HTML, cache-first para assets versionados). Além disso o mapa tem otimizações
+específicas de mobile: `zoomSnap` reduzido, animações desligadas durante
+gestos, *debounce* de bbox maior (900 ms) e atenuação de overlays durante
+pan/zoom — o toque continua fluido mesmo com todas as camadas ligadas.
+
+### 10.4 Como a localização do usuário é utilizada?
+
+Três usos, sempre com consentimento explícito do navegador:
+
+1. **Centralizar o mapa** no usuário (botão GPS da MapToolbar), com feedback
+   da precisão em metros.
+2. **Contextualizar as camadas**: o bbox resultante dispara a recarga de
+   qualidade do ar, clima e queimadas *daquela* região.
+3. **Publicar telemetria** (opcional): só quando o usuário aperta "publicar" no
+   app de sensores, a coordenada vira uma linha em `sensor_readings`.
+
+Nada é enviado em segundo plano; sem ação do usuário, a localização só existe
+na memória da aba.
+
+### 10.5 Como ocorre a atualização em tempo real?
+
+Três mecanismos combinados:
+
+- **Realtime do banco** — canal Postgres Changes: cada `INSERT` em
+  `sensor_readings` chega por WebSocket e o marcador aparece no mapa
+  instantaneamente, sem *polling*.
+- **Auto-refresh configurável** (Off / 2 / 5 / 10 min) das fontes públicas,
+  emitido por `layers.setRefreshInterval`; cada camada exibe um selo "atualizado
+  há Xs".
+- **Recarga orientada a viewport** — `map.bbox` (com *debounce*) reconstrói as
+  camadas dependentes de área quando o usuário navega.
+
+Por cima disso há o cache **SWR** (`src/lib/gis/cache.ts`): entrega o dado em
+cache na hora e revalida em segundo plano, com *fallback stale* quando a rede
+falha — por isso a interface nunca "pisca" nem trava esperando a API.
+
+### 10.6 Qual a arquitetura do sistema?
+
+Arquitetura **orientada a eventos, em quatro camadas**, detalhada na seção 3:
+
+1. **Apresentação** — React 19 + TanStack Start; `MapKernel` (Leaflet, instância
+   única) e `LayersApp` nunca se importam mutuamente.
+2. **Kernel de eventos** — Event Bus tipado (mitt) com canais
+   `map.*`, `layers.*`, `timeline.*`, `filters.*`, `theme.*`, `api.status`.
+   É o contrato do sistema: trocar o mapa ou adicionar camada não toca a UI.
+3. **Serviços de dados** — providers puros (`USGS`, `OpenAQ`, `NASA FIRMS`,
+   `NASA GIBS`, `Open-Meteo`, `RainViewer`, `NOAA CPC`, IoT/nuvem) envolvidos
+   por cache SWR; proxies server-side em Cloudflare Workers resolvem CORS e
+   aplicam `stale-while-revalidate`.
+4. **Persistência em nuvem** — Postgres gerenciado com RLS + Realtime.
+
+Padrões aplicados: *Event Bus / Pub-Sub*, *Strategy* (cada `LayerDef` encapsula
+build/opacity/dispose), *Stale-While-Revalidate*, *Backend-for-Frontend* (rotas
+`/api/public/*`) e *Offline-First* (PWA).
+
+---
+
+## 10. Camadas ativas por padrão
+
+Ao abrir o sistema — e a cada nova localização aberta pela busca ou pelo GPS —
+as camadas abaixo já entram ligadas e recarregam para aquela área:
+
+| Camada | Fonte | Escopo |
+| --- | --- | --- |
+| Temperatura / clima urbano | Open-Meteo | cidades do viewport; sem cidade catalogada, amostra o próprio viewport (centro + 4 quadrantes) |
+| Chuva — radar global | RainViewer | mosaico global de precipitação, quadro mais recente |
+| Vento e rajadas | Open-Meteo | no popup de cada ponto de clima |
+| Qualidade do ar (PM2.5) | OpenAQ v3 | estações dentro do bbox |
+| Queimadas / focos ativos | NASA FIRMS (VIIRS) | focos das últimas 24 h no bbox |
+| Vegetação NDVI | NASA GIBS (MODIS) | mosaico global 8 dias |
+| Terremotos | USGS | global, 24 h |
+| El Niño / La Niña | NOAA CPC | região Niño 3.4 |
+
+Assim, qualquer cidade do mundo aberta no mapa mostra em tempo real
+temperatura, chuva, vento, ar, fogo e vegetação — sem dado simulado.
+
+---
+
+## 11. Créditos e fontes de dados
 
 - U.S. Geological Survey — Earthquake Hazards Program
 - OpenAQ — plataforma aberta de qualidade do ar

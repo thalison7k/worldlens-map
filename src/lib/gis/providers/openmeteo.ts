@@ -18,6 +18,8 @@ export type WeatherPoint = {
   visibility: number;
   cloud: number;
   code: number;
+  precipitation: number;
+  rain: number;
 };
 
 /**
@@ -84,6 +86,8 @@ type OpenMeteoResp = {
     weather_code: number;
     cloud_cover: number;
     visibility?: number;
+    precipitation?: number;
+    rain?: number;
   };
   daily?: { uv_index_max?: number[] };
 };
@@ -91,15 +95,31 @@ type OpenMeteoResp = {
 export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]> {
   const [w, s, e, n] = bbox;
   const inBbox = GLOBAL_CITIES.filter((c) => c.lng >= w && c.lng <= e && c.lat >= s && c.lat <= n);
-  const pool = inBbox.length > 0 ? inBbox : GLOBAL_CITIES;
+  // When the user opens a location with no curated city inside the viewport,
+  // sample the viewport itself (center + quadrants) so ANY place on Earth
+  // still gets live weather instead of falling back to the world sample.
+  const spanLng = Math.abs(e - w);
+  const spanLat = Math.abs(n - s);
+  const zoomedIn = spanLng < 60 && spanLat < 40;
+  const viewportPicks =
+    inBbox.length === 0 && zoomedIn
+      ? [
+          { city: "Local selecionado", lat: (s + n) / 2, lng: (w + e) / 2 },
+          { city: "Setor NO", lat: s + spanLat * 0.75, lng: w + spanLng * 0.25 },
+          { city: "Setor NE", lat: s + spanLat * 0.75, lng: w + spanLng * 0.75 },
+          { city: "Setor SO", lat: s + spanLat * 0.25, lng: w + spanLng * 0.25 },
+          { city: "Setor SE", lat: s + spanLat * 0.25, lng: w + spanLng * 0.75 },
+        ]
+      : [];
+  const pool = inBbox.length > 0 ? inBbox : viewportPicks.length > 0 ? viewportPicks : GLOBAL_CITIES;
   const picks = pool.slice(0, max);
-  const key = `openmeteo:${picks.map((p) => p.city).join(",")}`;
+  const key = `openmeteo:${picks.map((p) => `${p.city}@${p.lat.toFixed(2)},${p.lng.toFixed(2)}`).join("|")}`;
   const started = performance.now();
   try {
     const data = await swr(key, 10 * 60_000, async () => {
       const latitudes = picks.map((p) => p.lat).join(",");
       const longitudes = picks.map((p) => p.lng).join(",");
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitudes}&longitude=${longitudes}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility&daily=uv_index_max&timezone=auto&forecast_days=1`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitudes}&longitude=${longitudes}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,weather_code,cloud_cover,visibility,precipitation,rain&daily=uv_index_max&timezone=auto&forecast_days=1`;
       const r = await fetch(url);
       if (!r.ok) throw new Error(String(r.status));
       const payload = (await r.json()) as OpenMeteoResp | OpenMeteoResp[];
@@ -125,6 +145,8 @@ export async function fetchWeather(bbox: BBox, max = 24): Promise<WeatherPoint[]
             visibility: (c.visibility ?? 0) / 1000,
             cloud: c.cloud_cover,
             code: c.weather_code,
+            precipitation: c.precipitation ?? 0,
+            rain: c.rain ?? 0,
           } as WeatherPoint;
         })
         .filter((x): x is WeatherPoint => x !== null);
