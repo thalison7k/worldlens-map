@@ -335,32 +335,34 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#dc2626", label: "Muito forte / tempestade" },
     ],
     build: (ctx) => {
+      const group = L.layerGroup().addTo(ctx.map);
       let tile: L.TileLayer | null = null;
       let disposed = false;
       let opacity = 0.7;
-      void (async () => {
+      const ready = (async () => {
         try {
           const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
           const j = (await r.json()) as { host: string; radar?: { past?: { path: string }[] } };
           const frames = j.radar?.past ?? [];
           const last = frames[frames.length - 1];
-          if (!last || disposed) return;
+          if (!last || disposed) return { count: 0 };
           tile = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
             opacity,
             maxZoom: 12,
             attribution: "RainViewer · radar de precipitação",
           });
-          tile.addTo(ctx.map);
-          ctx.onBuilt?.({ count: 1 });
+          tile.addTo(group);
+          return { count: 1 };
         } catch {
-          ctx.onBuilt?.({ count: 0 });
+          return { count: 0 };
         }
       })();
       return {
-        layer: undefined,
-        meta: { count: 0 },
+        layer: group,
+        meta: { count: 1 },
+        ready,
         setOpacity: (o) => { opacity = o; tile?.setOpacity(o); },
-        dispose: () => { disposed = true; if (tile) ctx.map.removeLayer(tile); },
+        dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
       };
     },
   },
