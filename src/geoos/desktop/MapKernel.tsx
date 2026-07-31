@@ -46,7 +46,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
-  const [coords, setCoords] = useState({ lat: 0, lng: 0, zoom: 3 });
+  
 
   // create map once
   useEffect(() => {
@@ -77,7 +77,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     let moveT: ReturnType<typeof setTimeout> | null = null;
     const bboxDebounce = isMobile ? 900 : 400;
     map.on("moveend zoomend", () => {
-      setCoords((c) => ({ ...c, zoom: map.getZoom() }));
       if (moveT) clearTimeout(moveT);
       moveT = setTimeout(emitBbox, bboxDebounce);
     });
@@ -95,7 +94,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
           cursorRaf = 0;
           if (!pendingCursor) return;
           const { lat, lng } = pendingCursor;
-          setCoords((c) => ({ ...c, lat, lng }));
           bus.emit("map.cursor", { lat, lng });
         });
       });
@@ -374,9 +372,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   return (
     <>
       <div ref={el} className="fixed inset-0 z-0" aria-label="MapKernel" />
-      <div className="pointer-events-none fixed bottom-2 right-4 z-10 font-mono text-[10px] text-white/50">
-        {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)} · z{coords.zoom}
-      </div>
     </>
   );
 }
