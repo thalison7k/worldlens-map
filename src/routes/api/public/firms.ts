@@ -79,7 +79,7 @@ async function fetchInpe(bbox: string, days: number) {
     `&outputFormat=application/json&srsName=EPSG:4326&count=2000&CQL_FILTER=${cql}`;
   try {
     const r = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!r.ok) return [];
+    if (!r.ok) { console.log('INPE not ok', r.status, url); return []; }
     const j = (await r.json()) as {
       features?: { properties: Record<string, unknown>; geometry?: { coordinates?: number[] } }[];
     };
@@ -101,7 +101,8 @@ async function fetchInpe(bbox: string, days: number) {
         time: ts.slice(11, 16),
       }];
     });
-  } catch {
+  } catch (err) {
+    console.log('INPE error', String(err));
     return [];
   }
 }
