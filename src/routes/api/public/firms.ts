@@ -71,7 +71,7 @@ async function fetchInpe(bbox: string, days: number) {
   const [w, s, e, n] = bbox.split(",").map(Number);
   const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 19) + "Z";
   const cql = encodeURIComponent(
-    `BBOX(geometria,${w},${s},${e},${n}) AND data_hora_gmt >= ${since}`,
+    `BBOX(geometria,${w},${s},${e},${n},'EPSG:4326') AND data_hora_gmt >= ${since}`,
   );
   const url =
     "https://terrabrasilis.dpi.inpe.br/queimadas/geoserver/bdqueimadas2/ows" +
