@@ -374,9 +374,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   return (
     <>
       <div ref={el} className="fixed inset-0 z-0" aria-label="MapKernel" />
-      <div className="pointer-events-none fixed bottom-2 right-4 z-10 font-mono text-[10px] text-white/50">
-        {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)} · z{coords.zoom}
-      </div>
     </>
   );
 }
