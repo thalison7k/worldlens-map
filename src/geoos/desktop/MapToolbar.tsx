@@ -93,20 +93,24 @@ export function MapToolbar() {
           {result ?? (measure === "distance" ? "Clique 2+ pontos no mapa para medir distância. Duplo clique finaliza." : "Clique 3+ pontos no mapa para medir área. Duplo clique finaliza.")}
         </div>
       )}
-      <div className="pointer-events-none fixed bottom-20 left-3 z-10 hidden flex-col items-start gap-1 sm:flex">
-        <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
-          <Crosshair className="h-3 w-3" />
-          {cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}
+      <div
+        className="pointer-events-none fixed left-2 z-10 flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-1 sm:left-3 sm:max-w-[60vw] sm:flex-col sm:items-start"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)" }}
+      >
+        <div className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
+          <Crosshair className="h-3 w-3 shrink-0" />
+          <span className="truncate">{cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}</span>
+          <span className="text-white/40">z{zoom}</span>
         </div>
         {clicked && (
           <button
             onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
-            className="pointer-events-auto flex items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08]"
+            className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08] active:bg-white/[0.12]"
             title="Copiar coordenadas do último clique"
           >
-            <MousePointer2 className="h-3 w-3" />
-            {clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}
-            <Copy className="h-2.5 w-2.5" />
+            <MousePointer2 className="h-3 w-3 shrink-0" />
+            <span className="truncate">{clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}</span>
+            <Copy className="h-2.5 w-2.5 shrink-0" />
           </button>
         )}
       </div>
