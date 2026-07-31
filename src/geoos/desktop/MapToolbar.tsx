@@ -62,8 +62,8 @@ export function MapToolbar() {
   };
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-14 z-20 -translate-x-1/2 sm:left-16 sm:translate-x-0">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 shadow-lg backdrop-blur-xl">
+    <div className="pointer-events-none fixed left-1/2 top-14 z-20 w-[calc(100vw-1rem)] max-w-max -translate-x-1/2 sm:left-16 sm:w-auto sm:translate-x-0">
+      <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/80 px-1.5 py-1 shadow-lg backdrop-blur-xl">
         <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
           <Ruler className="h-3.5 w-3.5" />
         </ToolBtn>
@@ -121,9 +121,11 @@ export function MapToolbar() {
 function ToolBtn({ children, active, onClick, title }: { children: React.ReactNode; active?: boolean; onClick: () => void; title: string }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       title={title}
-      className={`grid h-7 w-7 place-items-center rounded-md border transition ${
+      aria-label={title}
+      className={`grid h-9 w-9 shrink-0 touch-manipulation place-items-center rounded-md border transition sm:h-7 sm:w-7 ${
         active
           ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/20 text-white"
           : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
