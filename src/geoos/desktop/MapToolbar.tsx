@@ -63,8 +63,7 @@ export function MapToolbar() {
 
   return (
     <div
-      className="pointer-events-none fixed left-1 z-20 flex max-h-[70vh] w-auto flex-col items-start gap-1 sm:left-3"
-      style={{ top: "50%", transform: "translateY(-50%)" }}
+      className="pointer-events-none fixed left-2 top-1/2 z-20 flex max-h-[75vh] w-auto -translate-y-1/2 flex-col items-start gap-1 sm:left-3"
     >
       <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl">
         <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
@@ -95,7 +94,7 @@ export function MapToolbar() {
 
       {/* Coordenadas — empilhadas logo abaixo da barra vertical */}
       <div className="pointer-events-auto flex max-w-[45vw] flex-col items-start gap-1 sm:max-w-[220px]">
-        <div className="flex w-full items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
+        <div className="flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
           <Crosshair className="h-3 w-3 shrink-0" />
           <span className="truncate">{cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}</span>
           <span className="text-white/40">z{zoom}</span>
@@ -104,7 +103,7 @@ export function MapToolbar() {
           <button
             type="button"
             onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
-            className="flex w-full items-center gap-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08] active:bg-white/[0.12]"
+            className="flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08] active:bg-white/[0.12]"
             title="Copiar coordenadas do último clique"
           >
             <MousePointer2 className="h-3 w-3 shrink-0" />
