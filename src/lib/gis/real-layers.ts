@@ -146,7 +146,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
   },
   {
     id: "air_quality" as never,
-    label: "Qualidade do ar (OpenAQ)",
+    label: "Qualidade do ar (CAMS · Open-Meteo)",
     icon: "🫁",
     category: "ambiental",
     order: 46,
@@ -174,7 +174,10 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               <b>Parâmetro:</b> ${s.parameter.toUpperCase()}<br/>
               <b>Coords:</b> ${s.lat.toFixed(3)}, ${s.lng.toFixed(3)}<br/>
               <b>Atualizado:</b> ${new Date(s.updated).toLocaleString("pt-BR")}<br/>
-              <b>Fonte:</b> OpenAQ v3
+              <b>AQI (US):</b> ${s.aqi ?? "n/d"}<br/>
+              <b>PM10:</b> ${s.pm10 != null ? s.pm10.toFixed(1) + " µg/m³" : "n/d"}<br/>
+              <b>O₃:</b> ${s.o3 != null ? s.o3.toFixed(1) + " µg/m³" : "n/d"} · <b>NO₂:</b> ${s.no2 != null ? s.no2.toFixed(1) : "n/d"}<br/>
+              <b>Fonte:</b> CAMS via Open-Meteo (sem chave)
             </div>
           </div>`,
         );
@@ -241,7 +244,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
   },
   {
     id: "fires" as never,
-    label: "Queimadas (NASA FIRMS)",
+    label: "Queimadas (INPE / NASA FIRMS)",
     icon: "🔥",
     category: "ambiental",
     order: 88,
@@ -272,7 +275,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               <b>Satélite:</b> ${f.satellite}<br/>
               <b>Data / hora:</b> ${f.date} ${f.time} UTC<br/>
               <b>Coords:</b> ${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}<br/>
-              <b>Fonte:</b> NASA FIRMS · VIIRS
+              <b>Fonte:</b> INPE Queimadas / NASA FIRMS
             </div>
           </div>`,
         );
@@ -308,7 +311,11 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${iso}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
       const tile = L.tileLayer(url, {
         opacity: 0.65,
-        maxZoom: 9,
+        // GIBS só serve NDVI até o nível 8; acima disso o serviço devolve um
+        // tile com o texto "Zoom Level Not Supported". maxNativeZoom faz o
+        // Leaflet reamostrar o último nível válido em vez de pedir tiles inválidos.
+        maxNativeZoom: 8,
+        maxZoom: 22,
         attribution: "NASA GIBS · MODIS Terra NDVI",
       });
       tile.addTo(ctx.map);
