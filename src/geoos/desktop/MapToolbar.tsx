@@ -9,12 +9,20 @@ import { useBus } from "@/geoos/core/useBus";
  */
 export function MapToolbar() {
   const [cursor, setCursor] = useState({ lat: 0, lng: 0 });
+  const [zoom, setZoom] = useState(4);
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
 
   useBus("map.cursor", (p) => setCursor(p));
   useBus("map.click", (p) => setClicked(p));
+  useBus("map.bbox", (b) => {
+    setZoom(b.zoom);
+    // mobile has no hover cursor: fall back to the viewport center
+    if (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) {
+      setCursor({ lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 });
+    }
+  });
   useBus("map.measureResult", (r) => {
     setResult(`${r.mode === "distance" ? "Distância" : "Área"}: ${r.value.toFixed(2)} ${r.unit}`);
   });
