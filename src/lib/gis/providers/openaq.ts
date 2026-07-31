@@ -12,51 +12,93 @@ export type AirStation = {
   value: number;
   unit: string;
   updated: number;
+  aqi?: number;
+  pm10?: number;
+  o3?: number;
+  no2?: number;
+  co?: number;
+  so2?: number;
 };
 
-type OpenAqLocation = {
-  id: number;
-  name?: string;
-  coordinates?: { latitude: number; longitude: number };
-  country?: { name?: string; code?: string };
-  locality?: string;
-  sensors?: { parameter: { name: string; units: string }; latest?: { value: number; datetime?: { utc?: string } } }[];
+type AqResp = {
+  latitude: number;
+  longitude: number;
+  current?: {
+    time?: string;
+    pm2_5?: number;
+    pm10?: number;
+    us_aqi?: number;
+    ozone?: number;
+    nitrogen_dioxide?: number;
+    carbon_monoxide?: number;
+    sulphur_dioxide?: number;
+  };
 };
 
+/**
+ * Qualidade do ar real e global via Open-Meteo Air Quality (CAMS).
+ * Sem chave, com CORS liberado e cobertura mundial — amostramos uma grade
+ * dentro da bbox atual, então QUALQUER região do planeta retorna dados
+ * medidos/reanalisados (nunca simulados).
+ */
 export async function fetchAirStations(bbox: BBox, limit = 200): Promise<AirStation[]> {
-  const [w, s, e, n] = bbox.map((v) => Math.round(v * 4) / 4) as BBox;
-  const key = `openaq:${w}:${s}:${e}:${n}`;
+  const [w, s, e, n] = bbox;
+  const spanLng = Math.min(Math.abs(e - w), 360);
+  const spanLat = Math.min(Math.abs(n - s), 170);
+  // grade adaptativa: no máximo 5x5 pontos (25 chamadas em 1 request)
+  const cols = 5;
+  const rows = 5;
+  const pts: { lat: number; lng: number }[] = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const lng = w + (spanLng * (i + 0.5)) / cols;
+      const lat = s + (spanLat * (j + 0.5)) / rows;
+      if (lat < -89 || lat > 89) continue;
+      const nlng = ((lng + 540) % 360) - 180;
+      pts.push({ lat: Math.round(lat * 100) / 100, lng: Math.round(nlng * 100) / 100 });
+    }
+  }
+  const picks = pts.slice(0, Math.min(limit, 25));
+  const key = `airq:${picks.map((p) => `${p.lat},${p.lng.toFixed(2)}`).join("|")}`;
   const started = performance.now();
   try {
     const data = await swr(key, 10 * 60_000, async () => {
-      const url = `/api/public/openaq?bbox=${w},${s},${e},${n}&limit=${limit}`;
+      const url =
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${picks.map((p) => p.lat).join(",")}` +
+        `&longitude=${picks.map((p) => Number(p.lng.toFixed(2))).join(",")}` +
+        `&current=pm2_5,pm10,us_aqi,ozone,nitrogen_dioxide,carbon_monoxide,sulphur_dioxide`;
       const r = await fetch(url);
-      if (!r.ok) throw new Error(`OpenAQ ${r.status}`);
-      const j = (await r.json()) as { results: OpenAqLocation[] };
+      if (!r.ok) throw new Error(`AirQuality ${r.status}`);
+      const raw = (await r.json()) as AqResp | AqResp[];
+      const list = Array.isArray(raw) ? raw : [raw];
       const out: AirStation[] = [];
-      for (const loc of j.results ?? []) {
-        const c = loc.coordinates;
-        if (!c) continue;
-        const pm = loc.sensors?.find((sn) => sn.parameter.name === "pm25") ?? loc.sensors?.[0];
-        if (!pm?.latest) continue;
+      list.forEach((loc, i) => {
+        const c = loc.current;
+        if (!c || c.pm2_5 == null) return;
         out.push({
-          id: String(loc.id),
-          lat: c.latitude,
-          lng: c.longitude,
-          city: loc.locality ?? loc.name ?? "-",
-          country: loc.country?.name ?? loc.country?.code ?? "-",
-          parameter: pm.parameter.name,
-          value: pm.latest.value,
-          unit: pm.parameter.units,
-          updated: pm.latest.datetime?.utc ? Date.parse(pm.latest.datetime.utc) : Date.now(),
+          id: `aq-${i}-${loc.latitude.toFixed(2)}-${loc.longitude.toFixed(2)}`,
+          lat: loc.latitude,
+          lng: loc.longitude,
+          city: `Ar ${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)}`,
+          country: "CAMS",
+          parameter: "pm25",
+          value: c.pm2_5,
+          unit: "µg/m³",
+          updated: c.time ? Date.parse(`${c.time}Z`) : Date.now(),
+          aqi: c.us_aqi,
+          pm10: c.pm10,
+          o3: c.ozone,
+          no2: c.nitrogen_dioxide,
+          co: c.carbon_monoxide,
+          so2: c.sulphur_dioxide,
         });
-      }
+      });
       return out;
     });
-    bus.emit("api.status", { id: "openaq", label: "OpenAQ v3", ok: true, latencyMs: Math.round(performance.now() - started), ts: Date.now(), count: data.length });
+    bus.emit("api.status", { id: "openaq", label: "Ar (CAMS)", ok: true, latencyMs: Math.round(performance.now() - started), ts: Date.now(), count: data.length });
     return data;
   } catch (err) {
-    bus.emit("api.status", { id: "openaq", label: "OpenAQ v3", ok: false, latencyMs: Math.round(performance.now() - started), ts: Date.now(), error: String(err) });
+    bus.emit("api.status", { id: "openaq", label: "Ar (CAMS)", ok: false, latencyMs: Math.round(performance.now() - started), ts: Date.now(), error: String(err) });
     return [];
   }
 }

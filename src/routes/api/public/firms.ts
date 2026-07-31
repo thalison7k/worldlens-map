@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/public/firms")({
           return json({ fires: [], hasKey: false, error: "bad bbox" }, 400);
         }
         const key = process.env.FIRMS_MAP_KEY;
-        if (!key) return json({ fires: [], hasKey: false });
+        if (!key) return json({ fires: await fetchInpe(bbox, days), hasKey: false, source: "INPE" });
         // area/csv/{key}/{source}/{area}/{days}  — area = west,south,east,north
         const source = "VIIRS_NOAA20_NRT";
         const upstream = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/${bbox}/${days}`;
@@ -53,14 +53,58 @@ export const Route = createFileRoute("/api/public/firms")({
               time: p[iTime] ?? "",
             });
           }
-          return json({ fires, hasKey: true });
+          if (fires.length === 0) return json({ fires: await fetchInpe(bbox, days), hasKey: true, source: "INPE" });
+          return json({ fires, hasKey: true, source: "FIRMS" });
         } catch (e) {
-          return json({ fires: [], hasKey: true, error: String(e) });
+          return json({ fires: await fetchInpe(bbox, days), hasKey: true, source: "INPE", error: String(e) });
         }
       },
     },
   },
 });
+
+/**
+ * Fallback público e sem chave: focos ativos do Programa Queimadas do INPE
+ * (GOES-19 / VIIRS / MODIS, atualização a cada ~10 min).
+ */
+async function fetchInpe(bbox: string, days: number) {
+  const [w, s, e, n] = bbox.split(",").map(Number);
+  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 19) + "Z";
+  const cql = encodeURIComponent(
+    `BBOX(geometria,${w},${s},${e},${n},'EPSG:4326') AND data_hora_gmt >= ${since}`,
+  );
+  const url =
+    "https://terrabrasilis.dpi.inpe.br/queimadas/geoserver/bdqueimadas2/ows" +
+    "?service=WFS&version=2.0.0&request=GetFeature&typeNames=bdqueimadas2:focos" +
+    `&outputFormat=application/json&srsName=EPSG:4326&count=2000&CQL_FILTER=${cql}`;
+  try {
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!r.ok) return [];
+    const j = (await r.json()) as {
+      features?: { properties: Record<string, unknown>; geometry?: { coordinates?: number[] } }[];
+    };
+    return (j.features ?? []).flatMap((f) => {
+      const c = f.geometry?.coordinates;
+      const p = f.properties ?? {};
+      const lng = Number(c?.[0] ?? p.longitude);
+      const lat = Number(c?.[1] ?? p.latitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+      const ts = String(p.data_hora_gmt ?? "");
+      return [{
+        lat,
+        lng,
+        brightness: 0,
+        frp: Number(p.frp) || 0,
+        confidence: String(p.satelite ?? "nominal"),
+        satellite: `${p.satelite ?? "INPE"}${p.municipio ? ` · ${p.municipio}/${p.estado ?? ""}` : ""}`,
+        date: ts.slice(0, 10),
+        time: ts.slice(11, 16),
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
