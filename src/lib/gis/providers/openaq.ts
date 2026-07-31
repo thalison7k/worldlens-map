@@ -54,7 +54,8 @@ export async function fetchAirStations(bbox: BBox, limit = 200): Promise<AirStat
       const lng = w + (spanLng * (i + 0.5)) / cols;
       const lat = s + (spanLat * (j + 0.5)) / rows;
       if (lat < -89 || lat > 89) continue;
-      pts.push({ lat: Math.round(lat * 100) / 100, lng: Math.round(((lng + 540) % 360) - 180, ) });
+      const nlng = ((lng + 540) % 360) - 180;
+      pts.push({ lat: Math.round(lat * 100) / 100, lng: Math.round(nlng * 100) / 100 });
     }
   }
   const picks = pts.slice(0, Math.min(limit, 25));
