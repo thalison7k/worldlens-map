@@ -46,7 +46,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
-  const [coords, setCoords] = useState({ lat: 0, lng: 0, zoom: 3 });
+  
 
   // create map once
   useEffect(() => {
