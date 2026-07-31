@@ -77,7 +77,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     let moveT: ReturnType<typeof setTimeout> | null = null;
     const bboxDebounce = isMobile ? 900 : 400;
     map.on("moveend zoomend", () => {
-      setCoords((c) => ({ ...c, zoom: map.getZoom() }));
       if (moveT) clearTimeout(moveT);
       moveT = setTimeout(emitBbox, bboxDebounce);
     });
@@ -95,7 +94,6 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
           cursorRaf = 0;
           if (!pendingCursor) return;
           const { lat, lng } = pendingCursor;
-          setCoords((c) => ({ ...c, lat, lng }));
           bus.emit("map.cursor", { lat, lng });
         });
       });
