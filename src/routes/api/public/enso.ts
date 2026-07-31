@@ -1,57 +1,60 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * NOAA CPC ONI (Oceanic Niño Index) proxy — returns latest monthly
- * Niño 3.4 anomaly and derived ENSO phase. Public, no key required,
- * but needs a server proxy to bypass browser CORS.
+ * Índice Niño 3.4 (NOAA PSL) — anomalia mensal de TSM e fase ENSO derivada.
+ * Fonte pública sem chave; o proxy existe apenas para contornar CORS.
  */
 export const Route = createFileRoute("/api/public/enso")({
   server: {
     handlers: {
       GET: async () => {
-        const upstream =
-          "https://origin.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt";
-        try {
-          const r = await fetch(upstream, { headers: { Accept: "text/plain" } });
-          if (!r.ok) throw new Error(String(r.status));
-          const txt = await r.text();
-          const lines = txt.trim().split(/\r?\n/).slice(1); // drop header
-          const rows: { year: number; month: number; anom: number }[] = [];
-          for (const line of lines) {
-            const parts = line.trim().split(/\s+/);
-            if (parts.length < 5) continue;
-            const year = Number(parts[0]);
-            const month = Number(parts[1]);
-            const anom = Number(parts[4]); // ANOM column
-            if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(anom)) {
-              rows.push({ year, month, anom });
+        const sources = [
+          "https://psl.noaa.gov/data/correlation/nina34.anom.data",
+          "https://psl.noaa.gov/data/correlation/nina34.data",
+        ];
+        for (const upstream of sources) {
+          try {
+            const r = await fetch(upstream, { headers: { Accept: "text/plain" } });
+            if (!r.ok) continue;
+            const txt = await r.text();
+            const rows: { year: number; month: number; anom: number }[] = [];
+            for (const line of txt.split(/\r?\n/)) {
+              const parts = line.trim().split(/\s+/).map(Number);
+              // linhas de dados: ano seguido de 12 valores mensais
+              if (parts.length !== 13) continue;
+              const year = parts[0];
+              if (!Number.isFinite(year) || year < 1800 || year > 2200) continue;
+              for (let m = 1; m <= 12; m++) {
+                const anom = parts[m];
+                if (!Number.isFinite(anom) || anom <= -90) continue;
+                rows.push({ year, month: m, anom });
+              }
             }
+            if (rows.length === 0) continue;
+            const last = rows[rows.length - 1];
+            const history = rows.slice(-24);
+            const phase =
+              last.anom >= 1.5 ? "strong-nino" :
+              last.anom >= 0.5 ? "nino" :
+              last.anom <= -1.5 ? "strong-nina" :
+              last.anom <= -0.5 ? "nina" : "neutral";
+            return json({ latest: last, phase, history });
+          } catch {
+            /* tenta a próxima fonte */
           }
-          const last = rows[rows.length - 1];
-          const history = rows.slice(-24);
-          const phase =
-            !last ? "neutral" :
-            last.anom >= 1.5 ? "strong-nino" :
-            last.anom >= 0.5 ? "nino" :
-            last.anom <= -1.5 ? "strong-nina" :
-            last.anom <= -0.5 ? "nina" : "neutral";
-          return new Response(
-            JSON.stringify({ latest: last, phase, history }),
-            {
-              status: 200,
-              headers: {
-                "content-type": "application/json",
-                "cache-control": "public, max-age=3600, stale-while-revalidate=21600",
-              },
-            },
-          );
-        } catch {
-          return new Response(JSON.stringify({ latest: null, phase: "unknown", history: [] }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          });
         }
+        return json({ latest: null, phase: "unknown", history: [] });
       },
     },
   },
 });
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "public, max-age=3600, stale-while-revalidate=21600",
+    },
+  });
+}
