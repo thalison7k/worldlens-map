@@ -64,7 +64,7 @@ export function MapToolbar() {
   return (
     <>
       <div className="pointer-events-none fixed left-2 top-1/2 z-20 flex max-h-[75vh] w-auto -translate-y-1/2 flex-col items-start gap-1 duration-500 animate-in fade-in slide-in-from-left-4 sm:left-3">
-        <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl">
+        <div data-geoos-obstacle className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl">
           <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
             <Ruler className="h-3.5 w-3.5" />
           </ToolBtn>
@@ -92,9 +92,11 @@ export function MapToolbar() {
         </div>
       </div>
 
-      {/* Coordenadas — canto inferior esquerdo, livre do dock (centro) e da atribuição (direita) */}
+      {/* Coordenadas — posição calculada por detecção de colisão com os demais painéis */}
       <div
-        className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] left-14 z-30 flex max-w-[calc(100vw-4.5rem)] flex-wrap items-center gap-1 duration-500 animate-in fade-in slide-in-from-bottom-2 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] sm:left-16"
+        ref={coordRef}
+        style={{ left: pos.left, top: pos.top }}
+        className="pointer-events-none fixed z-30 flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-1 transition-[left,top] duration-300 ease-out animate-in fade-in"
       >
         <div className="pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/85 px-2 py-1 font-mono text-[10px] text-white/70 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/25 hover:bg-white/[0.08]">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -109,7 +111,7 @@ export function MapToolbar() {
           <button
             type="button"
             onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
-            className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/85 px-2 py-1 font-mono text-[10px] text-emerald-300 shadow-lg backdrop-blur-xl transition-all duration-200 duration-300 animate-in fade-in zoom-in-95 hover:scale-105 hover:bg-white/[0.08] active:scale-95"
+            className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/85 px-2 py-1 font-mono text-[10px] text-emerald-300 shadow-lg backdrop-blur-xl transition-all duration-200 hover:scale-105 hover:bg-white/[0.08] active:scale-95"
             title="Copiar coordenadas do último clique"
           >
             <MousePointer2 className="h-3 w-3 shrink-0" />
@@ -118,7 +120,7 @@ export function MapToolbar() {
           </button>
         )}
         {(measure !== "off" || result) && (
-          <div className="pointer-events-auto max-w-[60vw] rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[10px] leading-snug text-white/80 shadow-lg backdrop-blur duration-300 animate-in fade-in slide-in-from-left-2">
+          <div className="pointer-events-auto max-w-[60vw] rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[10px] leading-snug text-white/80 shadow-lg backdrop-blur duration-300 animate-in fade-in">
             {result ?? (measure === "distance" ? "Clique 2+ pontos no mapa. Duplo clique finaliza." : "Clique 3+ pontos no mapa. Duplo clique finaliza.")}
           </div>
         )}
