@@ -321,6 +321,9 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         // GIBS só publica NDVI até o nível 8 (Level9 = zooms 0..8).
         // maxNativeZoom faz o Leaflet reamostrar em vez de pedir tiles inválidos.
         maxNativeZoom: 8,
+        // upscaling até z12; acima disso o raster vira um borrão inútil e
+        // simplesmente deixa de ser desenhado (sem erro nem tile quebrado).
+        maxZoom: 12,
         attribution: "NASA GIBS · MODIS Terra NDVI",
       });
       tile.addTo(ctx.map);
@@ -382,6 +385,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               opacity: opacity * 0.8,
               // RainViewer publica satélite IR até z10 — acima disso upscaling.
               maxNativeZoom: 10,
+              maxZoom: 14,
               attribution: "RainViewer · nuvens (satélite IR)",
             });
             t.addTo(group);
@@ -397,6 +401,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               opacity: 0,
               // Radar de precipitação é publicado até z12.
               maxNativeZoom: 12,
+              maxZoom: 16,
               className: "geoos-rain-frame",
               attribution: "RainViewer · radar de precipitação",
             });
