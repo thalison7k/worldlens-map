@@ -62,62 +62,65 @@ export function MapToolbar() {
   };
 
   return (
-    <div
-      className="pointer-events-none fixed left-2 top-1/2 z-20 flex max-h-[75vh] w-auto -translate-y-1/2 flex-col items-start gap-1 sm:left-3"
-    >
-      <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl">
-        <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
-          <Ruler className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn title="Medir área" active={measure === "area"} onClick={() => toggleMeasure("area")}>
-          <Square className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <span className="my-0.5 h-px w-4 bg-white/10" />
-        <ToolBtn title="Minha localização (GPS)" onClick={locate}>
-          <LocateFixed className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
-          <Maximize2 className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
-          <Camera className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
-          <Download className="h-3.5 w-3.5" />
-        </ToolBtn>
-        <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
-          <Download className="h-3.5 w-3.5 rotate-90" />
-        </ToolBtn>
-        <span className="my-0.5 h-px w-4 bg-white/10" />
-        <Compass className="h-3.5 w-3.5 text-white/50" />
+    <>
+      <div className="pointer-events-none fixed left-2 top-1/2 z-20 flex max-h-[75vh] w-auto -translate-y-1/2 flex-col items-start gap-1 sm:left-3">
+        <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl">
+          <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
+            <Ruler className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn title="Medir área" active={measure === "area"} onClick={() => toggleMeasure("area")}>
+            <Square className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <span className="my-0.5 h-px w-4 bg-white/10" />
+          <ToolBtn title="Minha localização (GPS)" onClick={locate}>
+            <LocateFixed className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
+            <Maximize2 className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
+            <Camera className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
+            <Download className="h-3.5 w-3.5" />
+          </ToolBtn>
+          <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
+            <Download className="h-3.5 w-3.5 rotate-90" />
+          </ToolBtn>
+          <span className="my-0.5 h-px w-4 bg-white/10" />
+          <Compass className="h-3.5 w-3.5 text-white/50" />
+        </div>
       </div>
 
-      {/* Coordenadas — empilhadas logo abaixo da barra vertical */}
-      <div className="pointer-events-auto flex max-w-[45vw] flex-col items-start gap-1 sm:max-w-[220px]">
-        <div className="flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
+      {/* Coordenadas — barra horizontal no canto inferior esquerdo */}
+      <div
+        className="pointer-events-none fixed left-2 z-20 flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-1 sm:left-3"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+      >
+        <div className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-white/70 backdrop-blur-xl">
           <Crosshair className="h-3 w-3 shrink-0" />
-          <span className="truncate">{cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}</span>
+          <span>{cursor.lat.toFixed(3)}, {cursor.lng.toFixed(3)}</span>
           <span className="text-white/40">z{zoom}</span>
         </div>
         {clicked && (
           <button
             type="button"
             onClick={() => void copy(`${clicked.lat.toFixed(5)}, ${clicked.lng.toFixed(5)}`)}
-            className="flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08] active:bg-white/[0.12]"
+            className="pointer-events-auto flex items-center gap-1 whitespace-nowrap rounded-md border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1.5 py-1 font-mono text-[10px] text-emerald-300 backdrop-blur-xl hover:bg-white/[0.08] active:bg-white/[0.12]"
             title="Copiar coordenadas do último clique"
           >
             <MousePointer2 className="h-3 w-3 shrink-0" />
-            <span className="truncate">{clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}</span>
+            <span>{clicked.lat.toFixed(3)}, {clicked.lng.toFixed(3)}</span>
             <Copy className="h-2.5 w-2.5 shrink-0" />
           </button>
         )}
         {(measure !== "off" || result) && (
-          <div className="rounded-md border border-white/10 bg-black/70 px-2 py-1 text-[10px] leading-snug text-white/80 backdrop-blur">
+          <div className="pointer-events-auto max-w-[60vw] rounded-md border border-white/10 bg-black/70 px-2 py-1 text-[10px] leading-snug text-white/80 backdrop-blur">
             {result ?? (measure === "distance" ? "Clique 2+ pontos no mapa. Duplo clique finaliza." : "Clique 3+ pontos no mapa. Duplo clique finaliza.")}
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
