@@ -240,3 +240,17 @@
 .leaflet-container.geoos-interacting .geoos-rain-frame {
   transition: none;
 }
+
+/* ===== Ícone 3D animado do GeoOS (BrandGlobe / favicon) ===== */
+@keyframes geoos-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(-3deg); }
+}
+@keyframes geoos-halo {
+  0%, 100% { opacity: 0.35; transform: scale(0.9); }
+  50% { opacity: 0.8; transform: scale(1.08); }
+}
+@keyframes geoos-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
