@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Camera, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
+import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
 
 /**
  * MapToolbar — barra flutuante de ferramentas SIG que se comunica com o
