@@ -27,7 +27,7 @@ export function QuickLayersBar() {
 
   return (
     <div className="pointer-events-none fixed left-1/2 top-14 z-10 hidden -translate-x-1/2 duration-500 animate-in fade-in slide-in-from-top-3 md:block">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1 shadow backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-lg">
+      <div data-geoos-obstacle className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1 shadow backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-lg">
         {REAL_LAYER_DEFS.map((d) => {
           const on = visible[d.id];
           return (

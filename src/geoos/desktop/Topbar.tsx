@@ -29,7 +29,7 @@ export function Topbar() {
 
 
   return (
-    <header className="pointer-events-none fixed left-0 right-0 top-0 z-40 flex h-11 items-center gap-2 border-b border-white/5 bg-[color:var(--geoos-surface)]/50 px-3 backdrop-blur-xl sm:left-12 sm:gap-3 sm:px-4">
+    <header data-geoos-obstacle className="pointer-events-none fixed left-0 right-0 top-0 z-40 flex h-11 items-center gap-2 border-b border-white/5 bg-[color:var(--geoos-surface)]/50 px-3 backdrop-blur-xl sm:left-12 sm:gap-3 sm:px-4">
       <div className="pointer-events-auto flex items-center gap-2 text-xs">
         <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-white/60">
           GeoOS · Ambiental

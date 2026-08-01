@@ -38,7 +38,7 @@ export function AppWindow({ state }: { state: WindowState }) {
       disableDragging={isMax}
       enableResizing={!isMax}
     >
-      <div className="geoos-window flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-window)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+      <div data-geoos-obstacle className="geoos-window flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-window)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-xl">
         <div
           className="geoos-window-drag flex h-9 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 select-none"
           onDoubleClick={() => maximizeApp(state.appId)}
