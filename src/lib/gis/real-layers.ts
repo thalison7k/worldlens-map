@@ -303,19 +303,23 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#166534", label: "Vegetação densa (> 0.7)" },
     ],
     build: (ctx) => {
-      // GIBS 8-day NDVI (MODIS Terra) — WMTS/EPSG:3857 endpoint.
-      // Use a recent Monday to align with 8-day product.
-      const d = new Date();
-      d.setUTCDate(d.getUTCDate() - 10);
-      const iso = d.toISOString().slice(0, 10);
+      // GIBS 8-day NDVI (MODIS Terra) — WMTS REST, TileMatrixSet
+      // GoogleMapsCompatible_Level9 (EPSG:3857, níveis 0..8).
+      // A data precisa cair no início de um período de 8 dias do produto,
+      // senão o serviço responde com um tile de erro.
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const startOfYear = Date.UTC(year, 0, 1);
+      const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86_400_000);
+      // último período de 8 dias já consolidado (com folga de 1 período)
+      const periodStart = Math.max(0, Math.floor(dayOfYear / 8) * 8 - 8);
+      const iso = new Date(startOfYear + periodStart * 86_400_000).toISOString().slice(0, 10);
       const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${iso}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
-      const tile = L.tileLayer(url, {
+      const tile = safeTileLayer(url, {
         opacity: 0.65,
-        // GIBS só serve NDVI até o nível 8; acima disso o serviço devolve um
-        // tile com o texto "Zoom Level Not Supported". maxNativeZoom faz o
-        // Leaflet reamostrar o último nível válido em vez de pedir tiles inválidos.
+        // GIBS só publica NDVI até o nível 8 (Level9 = zooms 0..8).
+        // maxNativeZoom faz o Leaflet reamostrar em vez de pedir tiles inválidos.
         maxNativeZoom: 8,
-        maxZoom: 22,
         attribution: "NASA GIBS · MODIS Terra NDVI",
       });
       tile.addTo(ctx.map);
