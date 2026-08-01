@@ -10,7 +10,7 @@ export function Dock() {
 
   return (
     <div className="pointer-events-none fixed bottom-3 left-1/2 z-40 -translate-x-1/2">
-      <div className="pointer-events-auto flex items-end gap-1.5 rounded-2xl border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1.5 shadow-2xl backdrop-blur-xl">
+      <div data-geoos-obstacle className="pointer-events-auto flex items-end gap-1.5 rounded-2xl border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1.5 shadow-2xl backdrop-blur-xl">
         {items.map((app) => {
           const running = !!windows[app.id];
           return (
