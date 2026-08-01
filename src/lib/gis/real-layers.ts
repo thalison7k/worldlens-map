@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { safeTileLayer } from "./tiles";
 import { fetchEarthquakes, magColor } from "./providers/usgs";
 import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
@@ -303,19 +304,26 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#166534", label: "Vegetação densa (> 0.7)" },
     ],
     build: (ctx) => {
-      // GIBS 8-day NDVI (MODIS Terra) — WMTS/EPSG:3857 endpoint.
-      // Use a recent Monday to align with 8-day product.
-      const d = new Date();
-      d.setUTCDate(d.getUTCDate() - 10);
-      const iso = d.toISOString().slice(0, 10);
+      // GIBS 8-day NDVI (MODIS Terra) — WMTS REST, TileMatrixSet
+      // GoogleMapsCompatible_Level9 (EPSG:3857, níveis 0..8).
+      // A data precisa cair no início de um período de 8 dias do produto,
+      // senão o serviço responde com um tile de erro.
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const startOfYear = Date.UTC(year, 0, 1);
+      const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86_400_000);
+      // último período de 8 dias já consolidado (com folga de 1 período)
+      const periodStart = Math.max(0, Math.floor(dayOfYear / 8) * 8 - 8);
+      const iso = new Date(startOfYear + periodStart * 86_400_000).toISOString().slice(0, 10);
       const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${iso}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
-      const tile = L.tileLayer(url, {
+      const tile = safeTileLayer(url, {
         opacity: 0.65,
-        // GIBS só serve NDVI até o nível 8; acima disso o serviço devolve um
-        // tile com o texto "Zoom Level Not Supported". maxNativeZoom faz o
-        // Leaflet reamostrar o último nível válido em vez de pedir tiles inválidos.
+        // GIBS só publica NDVI até o nível 8 (Level9 = zooms 0..8).
+        // maxNativeZoom faz o Leaflet reamostrar em vez de pedir tiles inválidos.
         maxNativeZoom: 8,
-        maxZoom: 22,
+        // upscaling até z12; acima disso o raster vira um borrão inútil e
+        // simplesmente deixa de ser desenhado (sem erro nem tile quebrado).
+        maxZoom: 12,
         attribution: "NASA GIBS · MODIS Terra NDVI",
       });
       tile.addTo(ctx.map);
@@ -345,17 +353,27 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     ],
     build: (ctx) => {
       const group = L.layerGroup().addTo(ctx.map);
-      const tiles: L.TileLayer[] = [];
+      const cloudTiles: L.TileLayer[] = [];
+      /** Quadros do radar em ordem cronológica — animação 2D da chuva. */
+      const radarFrames: L.TileLayer[] = [];
       const windMarkers: L.Marker[] = [];
       let disposed = false;
       let opacity = 0.7;
+      let frameIndex = 0;
+      let elapsed = 0;
+      const FRAME_MS = 550;
+
+      const showFrame = (i: number) => {
+        radarFrames.forEach((t, k) => t.setOpacity(k === i ? opacity : 0));
+      };
+
       const ready = (async () => {
         let count = 0;
         try {
           const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
           const j = (await r.json()) as {
             host: string;
-            radar?: { past?: { path: string }[] };
+            radar?: { past?: { path: string }[]; nowcast?: { path: string }[] };
             satellite?: { infrared?: { path: string }[] };
           };
           if (disposed) return { count: 0 };
@@ -363,28 +381,40 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
           const clouds = j.satellite?.infrared ?? [];
           const lastCloud = clouds[clouds.length - 1];
           if (lastCloud) {
-            const t = L.tileLayer(`${j.host}${lastCloud.path}/256/{z}/{x}/{y}/0/0_0.png`, {
+            const t = safeTileLayer(`${j.host}${lastCloud.path}/256/{z}/{x}/{y}/0/0_0.png`, {
               opacity: opacity * 0.8,
-              maxZoom: 10,
+              // RainViewer publica satélite IR até z10 — acima disso upscaling.
+              maxNativeZoom: 10,
+              maxZoom: 14,
               attribution: "RainViewer · nuvens (satélite IR)",
             });
             t.addTo(group);
-            tiles.push(t);
+            cloudTiles.push(t);
             count++;
           }
-          const frames = j.radar?.past ?? [];
-          const last = frames[frames.length - 1];
-          if (last) {
-            const t = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
-              opacity,
-              maxZoom: 12,
+          // Animação: últimos quadros de radar + previsão imediata (nowcast).
+          const past = j.radar?.past ?? [];
+          const nowcast = j.radar?.nowcast ?? [];
+          const seq = [...past.slice(-8), ...nowcast.slice(0, 3)];
+          seq.forEach((f) => {
+            const t = safeTileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, {
+              opacity: 0,
+              // Radar de precipitação é publicado até z12.
+              maxNativeZoom: 12,
+              maxZoom: 16,
+              className: "geoos-rain-frame",
               attribution: "RainViewer · radar de precipitação",
             });
             t.addTo(group);
-            tiles.push(t);
-            count++;
+            radarFrames.push(t);
+          });
+          if (radarFrames.length) {
+            frameIndex = Math.max(0, radarFrames.length - nowcast.slice(0, 3).length - 1);
+            showFrame(frameIndex);
+            count += radarFrames.length;
           }
         } catch { /* radar/nuvens indisponíveis */ }
+
 
         // ventos: setas orientadas pela direção do vento (Open-Meteo)
         try {
@@ -422,9 +452,19 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         layer: group,
         meta: { count: 1 },
         ready,
+        // Animação 2D: avança os quadros do radar em loop suave.
+        tick: (dt: number) => {
+          if (radarFrames.length < 2) return;
+          elapsed += dt;
+          if (elapsed < FRAME_MS) return;
+          elapsed = 0;
+          frameIndex = (frameIndex + 1) % radarFrames.length;
+          showFrame(frameIndex);
+        },
         setOpacity: (o) => {
           opacity = o;
-          tiles.forEach((t, i) => t.setOpacity(i === 0 && tiles.length > 1 ? o * 0.8 : o));
+          cloudTiles.forEach((t) => t.setOpacity(o * 0.8));
+          showFrame(frameIndex);
           windMarkers.forEach((m) => m.setOpacity(o));
         },
         dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },

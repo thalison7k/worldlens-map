@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
+import { safeTileLayer, MAP_MAX_ZOOM } from "@/lib/gis/tiles";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
 import type { BuiltLayer, LayerDef, OccurrenceFilters, Timeframe } from "@/lib/gis/layer-defs";
@@ -54,6 +55,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const map = L.map(el.current, {
       center: [-14.235, -51.9253],
       zoom: 4,
+      maxZoom: MAP_MAX_ZOOM,
       zoomControl: false,
       attributionControl: false,
       worldCopyJump: true,
@@ -139,17 +141,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const { base: cfg, overlay } = resolveBase(base);
     if (baseRef.current) map.removeLayer(baseRef.current);
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
-    baseRef.current = L.tileLayer(cfg.url, {
+    baseRef.current = safeTileLayer(cfg.url, {
       attribution: cfg.attribution,
-      maxZoom: cfg.maxZoom,
+      // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
+      maxNativeZoom: cfg.maxZoom ?? 19,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
       subdomains: cfg.subdomains as unknown as string[] | string | undefined,
     }).addTo(map);
     if (overlay) {
-      overlayRef.current = L.tileLayer(overlay.url, {
+      overlayRef.current = safeTileLayer(overlay.url, {
         attribution: overlay.attribution,
-        maxZoom: overlay.maxZoom,
+        maxNativeZoom: overlay.maxZoom ?? 19,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
         subdomains: overlay.subdomains as unknown as string[] | string | undefined,
