@@ -100,6 +100,7 @@ export function MapToolbar() {
       {/* Coordenadas — posição calculada por detecção de colisão com os demais painéis */}
       <div
         ref={coordRef}
+        data-geoos-chip
         style={{ left: pos.left, top: pos.top }}
         className="pointer-events-none fixed z-30 flex max-w-[calc(100vw-1rem)] flex-wrap items-center gap-1 transition-[left,top] duration-300 ease-out animate-in fade-in"
       >
