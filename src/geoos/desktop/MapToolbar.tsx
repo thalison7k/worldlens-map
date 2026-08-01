@@ -92,8 +92,10 @@ export function MapToolbar() {
         </div>
       </div>
 
-      {/* Coordenadas — barra horizontal no topo esquerdo, abaixo da topbar */}
-      <div className="pointer-events-none fixed left-14 top-14 z-20 flex max-w-[calc(100vw-4.5rem)] flex-wrap items-center gap-1 duration-500 animate-in fade-in slide-in-from-top-2 sm:left-16">
+      {/* Coordenadas — canto inferior esquerdo, livre do dock (centro) e da atribuição (direita) */}
+      <div
+        className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] left-14 z-30 flex max-w-[calc(100vw-4.5rem)] flex-wrap items-center gap-1 duration-500 animate-in fade-in slide-in-from-bottom-2 sm:bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] sm:left-16"
+      >
         <div className="pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/85 px-2 py-1 font-mono text-[10px] text-white/70 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/25 hover:bg-white/[0.08]">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />

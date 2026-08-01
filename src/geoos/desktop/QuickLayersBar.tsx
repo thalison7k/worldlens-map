@@ -42,7 +42,7 @@ export function QuickLayersBar() {
               }`}
             >
               <span className={`text-sm transition-transform duration-300 ${on ? "scale-110" : ""}`}>{d.icon}</span>
-              <span className="hidden xl:inline">{d.label.split(" (")[0]}</span>
+              <span className="hidden whitespace-nowrap xl:inline">{d.label.split(" (")[0]}</span>
             </button>
           );
         })}
