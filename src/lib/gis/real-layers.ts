@@ -350,17 +350,27 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     ],
     build: (ctx) => {
       const group = L.layerGroup().addTo(ctx.map);
-      const tiles: L.TileLayer[] = [];
+      const cloudTiles: L.TileLayer[] = [];
+      /** Quadros do radar em ordem cronológica — animação 2D da chuva. */
+      const radarFrames: L.TileLayer[] = [];
       const windMarkers: L.Marker[] = [];
       let disposed = false;
       let opacity = 0.7;
+      let frameIndex = 0;
+      let elapsed = 0;
+      const FRAME_MS = 550;
+
+      const showFrame = (i: number) => {
+        radarFrames.forEach((t, k) => t.setOpacity(k === i ? opacity : 0));
+      };
+
       const ready = (async () => {
         let count = 0;
         try {
           const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
           const j = (await r.json()) as {
             host: string;
-            radar?: { past?: { path: string }[] };
+            radar?: { past?: { path: string }[]; nowcast?: { path: string }[] };
             satellite?: { infrared?: { path: string }[] };
           };
           if (disposed) return { count: 0 };
@@ -368,28 +378,38 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
           const clouds = j.satellite?.infrared ?? [];
           const lastCloud = clouds[clouds.length - 1];
           if (lastCloud) {
-            const t = L.tileLayer(`${j.host}${lastCloud.path}/256/{z}/{x}/{y}/0/0_0.png`, {
+            const t = safeTileLayer(`${j.host}${lastCloud.path}/256/{z}/{x}/{y}/0/0_0.png`, {
               opacity: opacity * 0.8,
-              maxZoom: 10,
+              // RainViewer publica satélite IR até z10 — acima disso upscaling.
+              maxNativeZoom: 10,
               attribution: "RainViewer · nuvens (satélite IR)",
             });
             t.addTo(group);
-            tiles.push(t);
+            cloudTiles.push(t);
             count++;
           }
-          const frames = j.radar?.past ?? [];
-          const last = frames[frames.length - 1];
-          if (last) {
-            const t = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
-              opacity,
-              maxZoom: 12,
+          // Animação: últimos quadros de radar + previsão imediata (nowcast).
+          const past = j.radar?.past ?? [];
+          const nowcast = j.radar?.nowcast ?? [];
+          const seq = [...past.slice(-8), ...nowcast.slice(0, 3)];
+          seq.forEach((f) => {
+            const t = safeTileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, {
+              opacity: 0,
+              // Radar de precipitação é publicado até z12.
+              maxNativeZoom: 12,
+              className: "geoos-rain-frame",
               attribution: "RainViewer · radar de precipitação",
             });
             t.addTo(group);
-            tiles.push(t);
-            count++;
+            radarFrames.push(t);
+          });
+          if (radarFrames.length) {
+            frameIndex = Math.max(0, radarFrames.length - nowcast.slice(0, 3).length - 1);
+            showFrame(frameIndex);
+            count += radarFrames.length;
           }
         } catch { /* radar/nuvens indisponíveis */ }
+
 
         // ventos: setas orientadas pela direção do vento (Open-Meteo)
         try {
