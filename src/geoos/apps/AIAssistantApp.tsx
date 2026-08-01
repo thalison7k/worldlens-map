@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
+import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
 import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
 import type { BBox } from "@/lib/gis/simulated";
@@ -44,10 +45,11 @@ export default function AIAssistantApp() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<"idle" | "context" | "thinking">("idle");
-  const [bbox, setBbox] = useState<BBox>([-180, -60, 180, 75]);
-  const [center, setCenter] = useState({ lat: 0, lng: 0 });
-  const [zoom, setZoom] = useState(3);
-  const [layers, setLayers] = useState<Record<string, number>>({});
+  const snap = getMapSnapshot();
+  const [bbox, setBbox] = useState<BBox>(snap.bbox);
+  const [center, setCenter] = useState(snap.center);
+  const [zoom, setZoom] = useState(snap.zoom);
+  const [layers, setLayers] = useState<Record<string, number>>(snap.layers);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = phase !== "idle";
