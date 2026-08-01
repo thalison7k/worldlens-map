@@ -139,17 +139,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const { base: cfg, overlay } = resolveBase(base);
     if (baseRef.current) map.removeLayer(baseRef.current);
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
-    baseRef.current = L.tileLayer(cfg.url, {
+    baseRef.current = safeTileLayer(cfg.url, {
       attribution: cfg.attribution,
-      maxZoom: cfg.maxZoom,
+      // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
+      maxNativeZoom: cfg.maxZoom,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
       subdomains: cfg.subdomains as unknown as string[] | string | undefined,
     }).addTo(map);
     if (overlay) {
-      overlayRef.current = L.tileLayer(overlay.url, {
+      overlayRef.current = safeTileLayer(overlay.url, {
         attribution: overlay.attribution,
-        maxZoom: overlay.maxZoom,
+        maxNativeZoom: overlay.maxZoom,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
         subdomains: overlay.subdomains as unknown as string[] | string | undefined,
