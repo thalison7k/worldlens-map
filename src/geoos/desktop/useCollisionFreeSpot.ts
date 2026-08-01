@@ -34,6 +34,7 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
 
     const compute = () => {
       const el = ref.current;
+      (window as unknown as Record<string, unknown>).__geoosChipDebug = { hasEl: !!el, at: Date.now() };
       if (!el) return;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
