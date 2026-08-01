@@ -36,7 +36,10 @@ export function safeTileLayer(url: string, opts: SafeTileOptions): L.TileLayer {
     minZoom: 0,
     // Nunca deixa o navegador exibir a imagem de erro do provedor.
     errorTileUrl: TRANSPARENT_TILE,
-    crossOrigin: true,
+    // `crossOrigin` só é necessário para provedores que enviam CORS. Alguns
+    // (RainViewer) não enviam `Access-Control-Allow-Origin` e o tile seria
+    // bloqueado pelo navegador; nesses casos o opt-in fica com a camada.
+    crossOrigin: false,
     noWrap: false,
     ...opts,
   });
