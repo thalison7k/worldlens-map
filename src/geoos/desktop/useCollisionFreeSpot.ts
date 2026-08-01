@@ -55,15 +55,25 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
 
       // Candidatos, em ordem de preferência (todos dentro da viewport).
       const candidates: Array<{ left: number; top: number }> = [
-        { left: MARGIN, top: vh - h - MARGIN - safeBottom },
-        { left: MARGIN, top: vh - h - MARGIN - safeBottom - 52 },
-        { left: MARGIN, top: vh - h - MARGIN - safeBottom - 104 },
-        { left: vw - w - MARGIN, top: vh - h - MARGIN - safeBottom - 52 },
-        { left: vw - w - MARGIN, top: vh - h - MARGIN - safeBottom - 104 },
-        { left: MARGIN, top: MARGIN + 52 },
-        { left: vw - w - MARGIN, top: MARGIN + 52 },
-        { left: Math.max(MARGIN, (vw - w) / 2), top: vh - h - MARGIN - safeBottom - 156 },
+        ...(() => {
+          // Colunas: depois de um rail lateral (se existir), à esquerda e à direita.
+          const railRight = obstacles
+            .filter((o) => o.left <= MARGIN + 4 && o.bottom - o.top > vh * 0.5)
+            .reduce((m, o) => Math.max(m, o.right), 0);
+          const xs = [
+            railRight ? railRight + MARGIN : MARGIN,
+            MARGIN,
+            vw - w - MARGIN,
+            Math.max(MARGIN, (vw - w) / 2),
+          ];
+          const bottom = vh - h - MARGIN - safeBottom;
+          const ys = [bottom, bottom - 52, bottom - 104, bottom - 156, MARGIN + 52, MARGIN];
+          const out: Array<{ left: number; top: number }> = [];
+          for (const y of ys) for (const x of xs) out.push({ left: x, top: y });
+          return out;
+        })(),
       ];
+
 
       let best = candidates[0];
       let bestScore = Number.POSITIVE_INFINITY;
