@@ -69,10 +69,14 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
           ];
           const bottom = vh - h - MARGIN - safeBottom;
           const ys = [bottom, bottom - 52, bottom - 104, bottom - 156, MARGIN + 52, MARGIN];
+          // Faixas livres entre painéis (ex.: entre a janela do app e o dock).
+          const edges = obstacles.map((o) => o.bottom + MARGIN).filter((y) => y > 0 && y + h < vh);
+          for (const y of edges) ys.splice(0, 0, y);
           const out: Array<{ left: number; top: number }> = [];
           for (const y of ys) for (const x of xs) out.push({ left: x, top: y });
           return out;
         })(),
+
       ];
 
 
