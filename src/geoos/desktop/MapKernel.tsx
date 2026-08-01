@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
+import { safeTileLayer, MAP_MAX_ZOOM } from "@/lib/gis/tiles";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
 import type { BuiltLayer, LayerDef, OccurrenceFilters, Timeframe } from "@/lib/gis/layer-defs";
@@ -54,6 +55,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const map = L.map(el.current, {
       center: [-14.235, -51.9253],
       zoom: 4,
+      maxZoom: MAP_MAX_ZOOM,
       zoomControl: false,
       attributionControl: false,
       worldCopyJump: true,
