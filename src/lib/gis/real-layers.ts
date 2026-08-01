@@ -475,7 +475,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
 ];
 
 /** Layer ids that need to rebuild whenever the map bbox changes. */
-export const BBOX_DRIVEN_LAYERS = new Set(["air_quality", "weather", "fires"]);
+export const BBOX_DRIVEN_LAYERS = new Set(["air_quality", "weather", "fires", "rain_radar"]);
 
 /** Layers that manage their own realtime refresh. */
 export const SELF_REFRESHING_LAYERS = new Set<string>();
