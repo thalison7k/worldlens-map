@@ -14,6 +14,10 @@ export function MapToolbar() {
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
+  useSafeBottomVar();
+  const { ref: coordRef, pos } = useCollisionFreeSpot<HTMLDivElement>();
+
+
 
   useBus("map.cursor", (p) => setCursor(p));
   useBus("map.click", (p) => setClicked(p));
