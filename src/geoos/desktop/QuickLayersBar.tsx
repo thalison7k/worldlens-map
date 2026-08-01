@@ -48,7 +48,5 @@ export function QuickLayersBar() {
         })}
       </div>
     </div>
-      </div>
-    </div>
   );
 }
