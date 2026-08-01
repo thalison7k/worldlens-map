@@ -5,6 +5,8 @@ import { useGeoOS } from "@/geoos/core/store";
 import { APPS_BY_ID } from "@/geoos/apps/registry";
 import type { WindowState } from "@/geoos/core/types";
 import { Suspense, createElement } from "react";
+import { AppErrorBoundary } from "./AppErrorBoundary";
+
 
 export function AppWindow({ state }: { state: WindowState }) {
   const app = APPS_BY_ID[state.appId];
@@ -92,10 +94,13 @@ export function AppWindow({ state }: { state: WindowState }) {
         </div>
 
         <div className="flex-1 overflow-hidden text-white">
-          <Suspense fallback={<div className="p-6 text-xs text-white/50">Carregando…</div>}>
-            {createElement(app.component as any)}
-          </Suspense>
+          <AppErrorBoundary appName={app.name}>
+            <Suspense fallback={<div className="p-6 text-xs text-white/50">Carregando…</div>}>
+              {createElement(app.component as any)}
+            </Suspense>
+          </AppErrorBoundary>
         </div>
+
       </div>
     </Rnd>
   );
