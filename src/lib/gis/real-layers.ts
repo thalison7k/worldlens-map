@@ -447,9 +447,19 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         layer: group,
         meta: { count: 1 },
         ready,
+        // Animação 2D: avança os quadros do radar em loop suave.
+        tick: (dt: number) => {
+          if (radarFrames.length < 2) return;
+          elapsed += dt;
+          if (elapsed < FRAME_MS) return;
+          elapsed = 0;
+          frameIndex = (frameIndex + 1) % radarFrames.length;
+          showFrame(frameIndex);
+        },
         setOpacity: (o) => {
           opacity = o;
-          tiles.forEach((t, i) => t.setOpacity(i === 0 && tiles.length > 1 ? o * 0.8 : o));
+          cloudTiles.forEach((t) => t.setOpacity(o * 0.8));
+          showFrame(frameIndex);
           windMarkers.forEach((m) => m.setOpacity(o));
         },
         dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
