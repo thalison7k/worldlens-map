@@ -5,6 +5,8 @@ import { useGeoOS } from "@/geoos/core/store";
 import { APPS_BY_ID } from "@/geoos/apps/registry";
 import type { WindowState } from "@/geoos/core/types";
 import { Suspense, createElement } from "react";
+import { AppErrorBoundary } from "./AppErrorBoundary";
+
 
 export function AppWindow({ state }: { state: WindowState }) {
   const app = APPS_BY_ID[state.appId];
