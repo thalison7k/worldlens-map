@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { safeTileLayer } from "./tiles";
 import { fetchEarthquakes, magColor } from "./providers/usgs";
 import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";

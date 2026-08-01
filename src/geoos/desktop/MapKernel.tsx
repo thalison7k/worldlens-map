@@ -144,7 +144,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     baseRef.current = safeTileLayer(cfg.url, {
       attribution: cfg.attribution,
       // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
-      maxNativeZoom: cfg.maxZoom,
+      maxNativeZoom: cfg.maxZoom ?? 19,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
       subdomains: cfg.subdomains as unknown as string[] | string | undefined,
@@ -152,7 +152,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     if (overlay) {
       overlayRef.current = safeTileLayer(overlay.url, {
         attribution: overlay.attribution,
-        maxNativeZoom: overlay.maxZoom,
+        maxNativeZoom: overlay.maxZoom ?? 19,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
         subdomains: overlay.subdomains as unknown as string[] | string | undefined,
