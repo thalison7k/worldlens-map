@@ -26,8 +26,8 @@ export function QuickLayersBar() {
   };
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-14 z-10 hidden -translate-x-1/2 md:block">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1 shadow backdrop-blur-xl">
+    <div className="pointer-events-none fixed left-1/2 top-14 z-10 hidden -translate-x-1/2 duration-500 animate-in fade-in slide-in-from-top-3 md:block">
+      <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1 shadow backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-lg">
         {REAL_LAYER_DEFS.map((d) => {
           const on = visible[d.id];
           return (
@@ -35,13 +35,13 @@ export function QuickLayersBar() {
               key={d.id}
               onClick={() => toggle(d.id)}
               title={d.label}
-              className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] transition ${
+              className={`flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] transition-all duration-200 hover:scale-105 active:scale-95 ${
                 on
-                  ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                  ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white shadow-[0_0_10px_-3px_var(--geoos-accent)]"
                   : "border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.08]"
               }`}
             >
-              <span className="text-sm">{d.icon}</span>
+              <span className={`text-sm transition-transform duration-300 ${on ? "scale-110" : ""}`}>{d.icon}</span>
               <span className="hidden xl:inline">{d.label.split(" (")[0]}</span>
             </button>
           );
