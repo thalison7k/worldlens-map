@@ -329,7 +329,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
   },
   {
     id: "rain_radar" as never,
-    label: "Chuva · radar global (RainViewer)",
+    label: "Chuva · radar + nuvens e ventos (RainViewer)",
     icon: "🌧️",
     category: "clima",
     order: 40,
@@ -340,35 +340,93 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#22c55e", label: "Moderada" },
       { color: "#eab308", label: "Forte" },
       { color: "#dc2626", label: "Muito forte / tempestade" },
+      { color: "#e2e8f0", label: "Nuvens (satélite IR)" },
+      { color: "#67e8f9", label: "Setas de vento (km/h)" },
     ],
     build: (ctx) => {
       const group = L.layerGroup().addTo(ctx.map);
-      let tile: L.TileLayer | null = null;
+      const tiles: L.TileLayer[] = [];
+      const windMarkers: L.Marker[] = [];
       let disposed = false;
       let opacity = 0.7;
       const ready = (async () => {
+        let count = 0;
         try {
           const r = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-          const j = (await r.json()) as { host: string; radar?: { past?: { path: string }[] } };
+          const j = (await r.json()) as {
+            host: string;
+            radar?: { past?: { path: string }[] };
+            satellite?: { infrared?: { path: string }[] };
+          };
+          if (disposed) return { count: 0 };
+          // nuvens (satélite infravermelho) por baixo do radar
+          const clouds = j.satellite?.infrared ?? [];
+          const lastCloud = clouds[clouds.length - 1];
+          if (lastCloud) {
+            const t = L.tileLayer(`${j.host}${lastCloud.path}/256/{z}/{x}/{y}/0/0_0.png`, {
+              opacity: opacity * 0.8,
+              maxZoom: 10,
+              attribution: "RainViewer · nuvens (satélite IR)",
+            });
+            t.addTo(group);
+            tiles.push(t);
+            count++;
+          }
           const frames = j.radar?.past ?? [];
           const last = frames[frames.length - 1];
-          if (!last || disposed) return { count: 0 };
-          tile = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
-            opacity,
-            maxZoom: 12,
-            attribution: "RainViewer · radar de precipitação",
-          });
-          tile.addTo(group);
-          return { count: 1 };
-        } catch {
-          return { count: 0 };
-        }
+          if (last) {
+            const t = L.tileLayer(`${j.host}${last.path}/256/{z}/{x}/{y}/4/1_1.png`, {
+              opacity,
+              maxZoom: 12,
+              attribution: "RainViewer · radar de precipitação",
+            });
+            t.addTo(group);
+            tiles.push(t);
+            count++;
+          }
+        } catch { /* radar/nuvens indisponíveis */ }
+
+        // ventos: setas orientadas pela direção do vento (Open-Meteo)
+        try {
+          const pts = await fetchWeather(ctx.bbox, 14);
+          if (disposed) return { count };
+          for (const p of pts) {
+            const speed = p.windSpeed;
+            const c = speed >= 60 ? "#f87171" : speed >= 30 ? "#fbbf24" : "#67e8f9";
+            const html = `<div style="transform:rotate(${p.windDir}deg);font-size:16px;line-height:1;color:${c};text-shadow:0 1px 3px rgba(0,0,0,.6)">↓</div><div style="font-size:9px;font-weight:700;color:${c};text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.8)">${Math.round(speed)}</div>`;
+            const m = L.marker([p.lat, p.lng], {
+              icon: L.divIcon({ html, className: "geoos-wind", iconSize: [26, 30], iconAnchor: [13, 15] }),
+              keyboard: false,
+              interactive: true,
+            }).bindPopup(
+              `<div style="min-width:200px">
+                <div style="font-weight:700;font-size:13px;color:${c}">💨 Vento · ${p.city}</div>
+                <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+                  <b>Velocidade:</b> ${p.windSpeed.toFixed(1)} km/h<br/>
+                  <b>Rajadas:</b> ${p.gust.toFixed(0)} km/h<br/>
+                  <b>Direção:</b> ${p.windDir}° (de onde sopra)<br/>
+                  <b>Nebulosidade:</b> ${p.cloud}%<br/>
+                  <b>Chuva agora:</b> ${p.precipitation.toFixed(1)} mm/h<br/>
+                  <b>Fonte:</b> Open-Meteo + RainViewer
+                </div>
+              </div>`,
+            );
+            m.addTo(group);
+            windMarkers.push(m);
+            count++;
+          }
+        } catch { /* ventos indisponíveis */ }
+        return { count };
       })();
       return {
         layer: group,
         meta: { count: 1 },
         ready,
-        setOpacity: (o) => { opacity = o; tile?.setOpacity(o); },
+        setOpacity: (o) => {
+          opacity = o;
+          tiles.forEach((t, i) => t.setOpacity(i === 0 && tiles.length > 1 ? o * 0.8 : o));
+          windMarkers.forEach((m) => m.setOpacity(o));
+        },
         dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
       };
     },
