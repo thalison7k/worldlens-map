@@ -22,7 +22,7 @@ export function Desktop() {
     // Auto-open the single functional module so users see it immediately.
     const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
     openApp("layers", isMobile
-      ? { x: 0, y: 44, width: window.innerWidth, height: window.innerHeight - 44 - 72, maximized: false }
+      ? { x: 0, y: 44, width: window.innerWidth, height: window.innerHeight - 44 - 72 - 38, maximized: false }
       : { x: window.innerWidth - 400, y: 60, width: 380, height: 620 });
   }, [openApp]);
 
