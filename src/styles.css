@@ -231,3 +231,12 @@
 .leaflet-container .leaflet-marker-pane {
   transition: opacity 220ms ease-out;
 }
+
+/* Animação 2D dos eventos de chuva (quadros do radar RainViewer) */
+.geoos-rain-frame {
+  transition: opacity 480ms linear;
+  will-change: opacity;
+}
+.leaflet-container.geoos-interacting .geoos-rain-frame {
+  transition: none;
+}
