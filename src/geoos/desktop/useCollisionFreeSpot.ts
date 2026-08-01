@@ -104,6 +104,9 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
 
       (window as unknown as Record<string, unknown>).__geoosChipDebug = { best, bestScore, w, h, obstacles, candidates: candidates.slice(0, 6) };
       setPos((p) => (Math.abs(p.left - best.left) < 1 && Math.abs(p.top - best.top) < 1 ? p : best));
+     } catch (err) {
+      (window as unknown as Record<string, unknown>).__geoosChipDebug = { error: String(err) };
+     }
     };
 
     const schedule = () => {
