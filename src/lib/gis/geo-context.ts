@@ -30,12 +30,31 @@ const inBox = (b: BBox, lat: number, lng: number) =>
 
 const fmt = (n: number, d = 1) => (Number.isFinite(n) ? n.toFixed(d) : "n/d");
 
+/** Cache curto do dossiê — evita refazer 6 fetches em perguntas sequenciais. */
+const CTX_TTL_MS = 60_000;
+let ctxCache: { key: string; ts: number; value: string } | null = null;
+
 /**
  * Monta um dossiê textual dos dados REAIS atualmente carregados para a área
  * visível do mapa. É esse texto — e apenas ele — que a IA recebe como base
  * factual, garantindo respostas ancoradas na aplicação e não em alucinações.
  */
 export async function buildGeoContext(input: GeoContextInput): Promise<string> {
+  const cacheKey = JSON.stringify([
+    input.bbox.map((n) => n.toFixed(2)),
+    input.zoom,
+    input.activeLayers.map((l) => l.id).sort(),
+  ]);
+  if (ctxCache && ctxCache.key === cacheKey && Date.now() - ctxCache.ts < CTX_TTL_MS) {
+    return ctxCache.value;
+  }
+  const built = await buildGeoContextUncached(input);
+  ctxCache = { key: cacheKey, ts: Date.now(), value: built };
+  return built;
+}
+
+async function buildGeoContextUncached(input: GeoContextInput): Promise<string> {
+
   const { bbox, center, zoom, activeLayers } = input;
   const active = new Set(activeLayers.map((l) => l.id));
 

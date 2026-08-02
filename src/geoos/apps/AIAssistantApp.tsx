@@ -4,47 +4,76 @@ import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
 import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
+import { GeoAnswer } from "./GeoAnswer";
 import type { BBox } from "@/lib/gis/simulated";
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean; ts: number };
 
 const SUGGESTIONS = [
-  "Resuma o cenário ambiental da área visível",
-  "Explique as ocorrências mais críticas agora",
-  "Detecte riscos ambientais nesta região",
-  "Correlacione clima, queimadas, vento e qualidade do ar",
-  "Gere recomendações técnicas de mitigação",
-  "Produza um relatório em tópicos",
+  "Diagnóstico ambiental completo da área visível",
+  "Quais os riscos mais críticos agora e por quê?",
+  "Correlacione vento, umidade e focos de calor",
+  "Avalie a qualidade do ar e a população exposta",
+  "Recomende ações de Defesa Civil para as próximas 24h",
+  "Compare o cenário atual com o padrão climático do El Niño",
 ];
 
-const SYSTEM_PROMPT = `Você é o Geo AI Assistant do GeoOS Environmental, um assistente geoespacial de monitoramento ambiental.
+/** Memória enviada ao modelo — mantém contexto sem estourar tokens. */
+const HISTORY_TURNS = 10;
 
-REGRAS OBRIGATÓRIAS:
-1. Responda EXCLUSIVAMENTE com base no DOSSIÊ DE DADOS fornecido (dados reais carregados no mapa neste momento). Nunca invente números, locais ou eventos.
-2. Se um dado necessário não estiver no dossiê, diga claramente que a camada correspondente está inativa ou sem cobertura na área visível e sugira ativá-la.
-3. Escreva em português do Brasil, tom técnico e objetivo, usando tópicos curtos quando ajudar.
-4. Sempre cite os valores numéricos e as fontes (USGS, INPE/NASA FIRMS, Open-Meteo, CAMS, NOAA, RainViewer, NASA GIBS, sensores IoT) que sustentam cada afirmação.
-5. Quando fizer sentido, correlacione variáveis (vento × queimadas × PM2.5, chuva × risco de foco, temperatura × UV) e classifique riscos como Baixo / Moderado / Alto / Crítico.
-6. Termine análises com recomendações técnicas acionáveis.`;
+const SYSTEM_PROMPT = `Você é o Geo AI, consultor sênior de inteligência ambiental do GeoOS Environmental (World Atlas Live), com décadas de atuação em geoprocessamento (GIS), sensoriamento remoto, mudanças climáticas, meteorologia, hidrologia, gestão ambiental, defesa civil, monitoramento de desastres, agricultura de precisão, IoT ambiental, análise espacial e ciência de dados ambientais.
+
+POSTURA
+- Fale como um analista humano experiente em consultoria técnica: natural, direto, sem tom robótico e sem saudações genéricas.
+- Nunca aja como chatbot genérico. Entregue interpretação, não listas de dados crus.
+- Português do Brasil. Sem jargão desnecessário; explique o mecanismo físico quando relevante.
+
+BASE FACTUAL
+- Use EXCLUSIVAMENTE o DOSSIÊ DE DADOS enviado (dados reais carregados no mapa agora). Nunca invente números, locais ou eventos.
+- Se faltar um dado, diga que a camada está inativa ou sem cobertura na área visível e sugira ativá-la.
+- Cite valores e fontes (USGS, INPE/NASA FIRMS, Open-Meteo, CAMS, NOAA CPC, RainViewer, NASA GIBS, sensores IoT).
+- CRUZE variáveis obrigatoriamente (vento × umidade × focos, chuva × risco, temperatura × UV, PM2.5 × dispersão, ENSO × seca) e explique a relação causal.
+- Considere o histórico da conversa: não repita o que já foi dito; produza análise progressiva e complementar.
+
+FORMATO DE SAÍDA (obrigatório, exatamente estes cabeçalhos, sem outros títulos, sem tabelas, sem negrito)
+## RESUMO
+Um parágrafo curto (2 a 3 frases) com o veredito técnico.
+## SITUACAO
+- 3 a 5 marcadores objetivos com números e unidades.
+## RISCOS
+- Até 4 marcadores; comece cada um com 🔴, 🟠 ou 🟡 conforme a gravidade.
+## EVIDENCIAS
+- Até 4 marcadores no formato: fonte · camada · horário/janela · valor.
+## RECOMENDACOES
+- 3 a 5 ações técnicas acionáveis e priorizadas.
+## FOCOS
+- lat, lng, zoom | rótulo curto | id_da_camada
+(1 a 3 linhas apontando os pontos de maior risco dentro da bbox; use ids de camadas ativas; omita a seção se não houver ponto relevante.)
+## CRITICIDADE: Baixo | Moderado | Alto | Crítico
+## CONFIANCA: <número de 0 a 100>%
+
+REGRAS DE ESTILO
+- Marcadores curtos (máx. ~2 linhas cada). Sem repetição, sem blocos densos, sem markdown além dos cabeçalhos e hifens.`;
 
 const LABELS: Record<string, string> = Object.fromEntries(
   REAL_LAYER_DEFS.map((d) => [String(d.id), d.label]),
 );
 
-const REQUEST_TIMEOUT_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 /**
- * Geo AI Assistant — chat contextual sobre o Lovable AI Gateway.
+ * Geo AI Assistant — agente ambiental sênior sobre o Lovable AI Gateway.
  *
  * Recebe automaticamente bbox, centro, zoom, camadas ativas e um dossiê com
- * os dados reais carregados (clima, sismos, queimadas, ar, IoT, NDVI, radar)
- * e responde apenas com base neles. Nenhuma exceção derruba a interface:
- * toda falha vira uma mensagem amigável no próprio chat.
+ * os dados reais carregados (clima, sismos, queimadas, ar, NDVI, radar, ENSO,
+ * IoT), responde em streaming num formato estruturado e permite navegar o
+ * mapa a partir da própria resposta.
  */
 export default function AIAssistantApp() {
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [stream, setStream] = useState("");
   const [input, setInput] = useState("");
-  const [phase, setPhase] = useState<"idle" | "context" | "thinking">("idle");
+  const [phase, setPhase] = useState<"idle" | "context" | "thinking" | "streaming">("idle");
   const snap = getMapSnapshot();
   const [bbox, setBbox] = useState<BBox>(snap.bbox);
   const [center, setCenter] = useState(snap.center);
@@ -72,7 +101,7 @@ export default function AIAssistantApp() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, phase]);
+  }, [messages, phase, stream]);
 
   // Cancela qualquer requisição pendente ao fechar a janela.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -94,6 +123,7 @@ export default function AIAssistantApp() {
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    setStream("");
     setPhase("idle");
   }, []);
 
@@ -102,9 +132,15 @@ export default function AIAssistantApp() {
       const q = (text ?? input).trim();
       if (!q || busy) return;
       setInput("");
-      const history = [...messages.filter((m) => !m.error), { role: "user" as const, content: q, ts: Date.now() }];
+      const history = [
+        ...messages.filter((m) => !m.error),
+        { role: "user" as const, content: q, ts: Date.now() },
+      ];
       setMessages(history);
+      setStream("");
 
+      // Cancela qualquer análise anterior ainda pendente.
+      abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -114,7 +150,6 @@ export default function AIAssistantApp() {
         let dossier = "";
         try {
           dossier = await buildGeoContext({ bbox, center, zoom, activeLayers });
-          console.info("[GeoAI] contexto montado", { zoom, bbox, camadas: activeLayers.length });
         } catch (ctxErr) {
           console.warn("[GeoAI] falha ao montar contexto, seguindo com metadados básicos", ctxErr);
           dossier = `### CONTEXTO ESPACIAL\nCentro ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)} · zoom ${zoom}\nCamadas ativas: ${
@@ -129,16 +164,13 @@ export default function AIAssistantApp() {
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            system: `${SYSTEM_PROMPT}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
-            messages: history.map((m) => ({ role: m.role, content: m.content })),
+            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
+            messages: history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content })),
           }),
         });
 
-        const payload = (await res.json().catch(() => null)) as
-          | { text?: string; error?: string }
-          | null;
-
-        if (!res.ok || !payload?.text) {
+        if (!res.ok || !res.body) {
+          const payload = (await res.json().catch(() => null)) as { error?: string } | null;
           const detail = payload?.error ?? `HTTP ${res.status}`;
           console.error("[GeoAI] resposta inválida do endpoint:", res.status, detail);
           const friendly =
@@ -148,18 +180,31 @@ export default function AIAssistantApp() {
                 ? "Muitas requisições em sequência. Aguarde alguns segundos e tente novamente."
                 : res.status === 503
                   ? "O serviço de IA não está configurado neste ambiente. O restante do GeoOS continua funcionando normalmente."
-                  : res.status === 504
-                    ? "A IA demorou demais para responder. Tente uma pergunta mais específica ou reduza a área visível."
-                    : `A IA está indisponível no momento (${detail}). Os dados do mapa continuam atualizando normalmente.`;
+                  : `A IA está indisponível no momento (${detail}). Os dados do mapa continuam atualizando normalmente.`;
           push({ role: "assistant", content: friendly, error: true });
           return;
         }
 
-        push({ role: "assistant", content: payload.text });
+        setPhase("streaming");
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+        let acc = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          acc += value;
+          setStream(acc);
+        }
+
+        const answer = acc.trim();
+        if (!answer) {
+          push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
+        } else {
+          push({ role: "assistant", content: answer });
+        }
+        setStream("");
       } catch (e) {
         if ((e as Error)?.name === "AbortError") {
-          console.info("[GeoAI] requisição cancelada pelo usuário ou por timeout");
-          push({ role: "assistant", content: "Solicitação cancelada.", error: true });
+          push({ role: "assistant", content: "Análise cancelada.", error: true });
           return;
         }
         console.error("[GeoAI] falha de rede:", e);
@@ -171,6 +216,7 @@ export default function AIAssistantApp() {
       } finally {
         clearTimeout(timeout);
         abortRef.current = null;
+        setStream("");
         setPhase("idle");
       }
     },
@@ -182,38 +228,42 @@ export default function AIAssistantApp() {
   return (
     <div className="flex h-full flex-col text-white">
       <div className="flex items-start justify-between gap-2 border-b border-white/10 px-4 py-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 animate-pulse text-[color:var(--geoos-accent)]" />
-            <h3 className="text-sm font-semibold">Geo AI Assistant</h3>
+            <h3 className="truncate text-sm font-semibold">Geo AI · Analista Ambiental Sênior</h3>
           </div>
-          <p className="mt-0.5 text-[11px] text-white/50">
-            {activeLayers.length} camada{activeLayers.length === 1 ? "" : "s"} ativa
-            {activeLayers.length === 1 ? "" : "s"} · centro {center.lat.toFixed(2)}, {center.lng.toFixed(2)} · z{zoom}
+          <p className="mt-0.5 truncate text-[11px] text-white/50">
+            {activeLayers.length} camada{activeLayers.length === 1 ? "" : "s"} · centro {center.lat.toFixed(2)},{" "}
+            {center.lng.toFixed(2)} · z{zoom}
           </p>
         </div>
         {messages.length > 0 && (
           <button
+            type="button"
             onClick={() => setMessages([])}
             title="Limpar conversa"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-white/10 text-white/60 transition hover:bg-white/10 hover:text-white"
+            aria-label="Limpar conversa"
+            className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 text-white/60 transition active:scale-95 hover:bg-white/10 hover:text-white"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3">
+      <div ref={scrollRef} className="geoos-scroll flex-1 overflow-y-auto p-3">
         {messages.length === 0 && (
-          <div className="space-y-1.5 animate-fade-in">
+          <div className="animate-fade-in space-y-1.5">
             <p className="mb-2 text-[11px] text-white/50">
-              Pergunte sobre a área visível — respondo apenas com os dados reais carregados agora.
+              Analiso automaticamente a área visível — bbox, zoom, camadas, clima, focos, ar, sismos, NDVI, radar,
+              ENSO e sensores IoT.
             </p>
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => void send(s)}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-[11px] text-white/80 transition hover:border-[color:var(--geoos-accent)]/40 hover:bg-white/[0.07]"
+                className="w-full touch-manipulation rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left text-[11.5px] text-white/80 transition active:scale-[0.99] hover:border-[color:var(--geoos-accent)]/40 hover:bg-white/[0.07]"
               >
                 {s}
               </button>
@@ -229,15 +279,25 @@ export default function AIAssistantApp() {
                 ? "ml-6 bg-[color:var(--geoos-accent)]/15 text-white"
                 : m.error
                   ? "mr-6 flex gap-2 border border-amber-400/30 bg-amber-400/10 text-amber-100"
-                  : "mr-6 whitespace-pre-wrap border border-white/10 bg-white/[0.03] text-white/90"
+                  : "mr-6 border border-white/10 bg-white/[0.03] text-white/90"
             }`}
           >
             {m.error && <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
-            <span className="whitespace-pre-wrap">{m.content}</span>
+            {m.role === "assistant" && !m.error ? (
+              <GeoAnswer text={m.content} />
+            ) : (
+              <span className="whitespace-pre-wrap">{m.content}</span>
+            )}
           </div>
         ))}
 
-        {busy && (
+        {stream && (
+          <div className="mr-6 mb-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+            <GeoAnswer text={stream} streaming />
+          </div>
+        )}
+
+        {busy && !stream && (
           <div className="mr-6 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/70">
             <span className="h-2 w-2 animate-ping rounded-full bg-[color:var(--geoos-accent)]" />
             {phase === "context" ? "Coletando dados da área visível…" : "Analisando…"}
@@ -246,40 +306,46 @@ export default function AIAssistantApp() {
 
         {!busy && lastUser && messages[messages.length - 1]?.error && (
           <button
+            type="button"
             onClick={() => void send(lastUser.content)}
-            className="mr-6 flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/10"
+            className="mr-6 flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-md border border-white/10 px-3 text-[11px] text-white/70 transition active:scale-95 hover:bg-white/10"
           >
-            <RefreshCw className="h-3 w-3" /> Tentar novamente
+            <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
           </button>
         )}
       </div>
 
-      <div className="border-t border-white/10 p-2">
+      <div className="border-t border-white/10 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="flex gap-1.5">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            enterKeyHint="send"
             onKeyDown={(e) => {
               if (e.key === "Enter") void send();
             }}
             placeholder="Pergunte sobre a região visível…"
-            className="flex-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[12px] text-white outline-none transition placeholder:text-white/30 focus:border-[color:var(--geoos-accent)]/60"
+            className="min-h-[44px] flex-1 rounded-md border border-white/10 bg-white/[0.04] px-3 text-[16px] text-white outline-none transition placeholder:text-white/30 focus:border-[color:var(--geoos-accent)]/60 sm:text-[12px]"
           />
           {busy ? (
             <button
+              type="button"
               onClick={cancel}
-              title="Cancelar"
-              className="grid h-8 w-8 place-items-center rounded-md border border-white/10 bg-red-500/20 text-white transition hover:bg-red-500/30"
+              title="Cancelar análise"
+              aria-label="Cancelar análise"
+              className="grid h-11 w-11 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 bg-red-500/20 text-white transition active:scale-95 hover:bg-red-500/30"
             >
-              <Square className="h-3 w-3" />
+              <Square className="h-3.5 w-3.5" />
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => void send()}
               disabled={!input.trim()}
-              className="grid h-8 w-8 place-items-center rounded-md border border-white/10 bg-[color:var(--geoos-accent)]/20 text-white transition hover:bg-[color:var(--geoos-accent)]/30 disabled:opacity-40"
+              aria-label="Enviar pergunta"
+              className="grid h-11 w-11 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 bg-[color:var(--geoos-accent)]/20 text-white transition active:scale-95 hover:bg-[color:var(--geoos-accent)]/30 disabled:opacity-40"
             >
-              <Send className="h-3.5 w-3.5" />
+              <Send className="h-4 w-4" />
             </button>
           )}
         </div>

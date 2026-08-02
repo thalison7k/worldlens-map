@@ -1,27 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText } from "ai";
+import { streamText } from "ai";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 
 const MODEL = "google/gemini-3.6-flash";
-/** Teto de tempo do lado do servidor — evita requisição pendurada. */
-const TIMEOUT_MS = 45_000;
 
 /**
- * Endpoint de chat (não-streaming) sobre o Lovable AI Gateway.
+ * Endpoint de chat do Geo AI Assistant sobre o Lovable AI Gateway.
+ *
+ * Responde em STREAMING (text/plain chunked) para reduzir drasticamente o
+ * tempo até o primeiro token. Erros que acontecem antes do stream voltam como
+ * JSON com status apropriado (402 créditos, 429 rate limit, 503 sem chave).
  *
  * IMPORTANTE: o AI SDK rejeita mensagens com `role: "system"` dentro de
- * `messages` ("System messages are not allowed in the prompt or messages
- * fields"). Elas precisam ir na opção `system` — era essa a causa raiz do
- * erro 500 do Geo AI Assistant.
+ * `messages`; o system prompt vai na opção dedicada `system`.
  */
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const started = Date.now();
-        const key = process.env['LOVABLE_API_KEY'];
+        const key = process.env["LOVABLE_API_KEY"];
         if (!key) {
           console.error("[api/chat] LOVABLE_API_KEY ausente no ambiente do servidor");
           return json({ error: "IA não configurada neste ambiente (LOVABLE_API_KEY ausente)." }, 503);
@@ -33,7 +32,6 @@ export const Route = createFileRoute("/api/chat")({
         if (!body) return json({ error: "Corpo da requisição inválido (JSON malformado)." }, 400);
 
         const raw = Array.isArray(body.messages) ? body.messages : [];
-        // Separa system (opção dedicada) das mensagens de conversa.
         const systemParts = [
           ...(typeof body.system === "string" && body.system.trim() ? [body.system.trim()] : []),
           ...raw.filter((m) => m?.role === "system" && typeof m.content === "string").map((m) => m.content),
@@ -53,33 +51,31 @@ export const Route = createFileRoute("/api/chat")({
           },
         });
 
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
         try {
-          const { text } = await generateText({
+          const result = streamText({
             model: gateway(MODEL),
             ...(systemParts.length ? { system: systemParts.join("\n\n") } : {}),
             messages,
-            abortSignal: controller.signal,
+            abortSignal: request.signal,
+            onError: ({ error }) => console.error("[api/chat] erro no stream:", error),
           });
-          const answer = (text ?? "").trim();
-          console.log(`[api/chat] ok em ${Date.now() - started}ms · ${answer.length} chars`);
-          if (!answer) return json({ error: "O modelo retornou uma resposta vazia." }, 502);
-          return json({ text: answer, model: MODEL, elapsedMs: Date.now() - started });
+
+          return new Response(result.textStream.pipeThrough(new TextEncoderStream()), {
+            headers: {
+              "content-type": "text/plain; charset=utf-8",
+              "cache-control": "no-store",
+              "x-accel-buffering": "no",
+            },
+          });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          const aborted = /abort/i.test(msg);
-          const status = aborted
-            ? 504
-            : /429|rate limit/i.test(msg)
-              ? 429
-              : /402|credit|payment/i.test(msg)
-                ? 402
-                : 502;
-          console.error(`[api/chat] falha (${status}) após ${Date.now() - started}ms:`, msg);
-          return json({ error: aborted ? "Tempo limite excedido ao consultar o modelo." : msg }, status);
-        } finally {
-          clearTimeout(timer);
+          const status = /429|rate limit/i.test(msg)
+            ? 429
+            : /402|credit|payment/i.test(msg)
+              ? 402
+              : 502;
+          console.error(`[api/chat] falha (${status}):`, msg);
+          return json({ error: msg }, status);
         }
       },
     },

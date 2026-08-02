@@ -48,16 +48,27 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
       return;
     }
     zCounter += 1;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    const isMobile = vw < 640;
+    // Em telas pequenas a janela ocupa a área útil entre a topbar e o dock.
+    const width = isMobile ? vw - 12 : Math.min(defaults?.width ?? 720, vw - 24);
+    const height = isMobile
+      ? Math.max(260, vh - 44 - 88 - 12)
+      : Math.min(defaults?.height ?? 480, vh - 120);
+    const x = isMobile ? 6 : Math.max(8, Math.min(defaults?.x ?? 120 + Math.random() * 80, vw - width - 8));
+    const y = isMobile ? 50 : Math.max(48, Math.min(defaults?.y ?? 100 + Math.random() * 60, vh - height - 24));
     const w: WindowState = {
       appId,
-      x: defaults?.x ?? 120 + Math.random() * 80,
-      y: defaults?.y ?? 100 + Math.random() * 60,
-      width: defaults?.width ?? 720,
-      height: defaults?.height ?? 480,
+      x,
+      y,
+      width,
+      height,
       z: zCounter,
       minimized: false,
       maximized: defaults?.maximized ?? false,
     };
+
     set((s) => ({
       windows: { ...s.windows, [appId]: w },
       order: [...s.order.filter((id) => id !== appId), appId],
