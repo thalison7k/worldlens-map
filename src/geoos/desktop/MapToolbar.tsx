@@ -144,7 +144,7 @@ function ToolBtn({ children, active, onClick, title }: { children: React.ReactNo
       onClick={onClick}
       title={title}
       aria-label={title}
-      className={`grid h-9 w-9 shrink-0 touch-manipulation place-items-center rounded-md border transition-all duration-200 hover:scale-110 active:scale-90 sm:h-7 sm:w-7 ${
+      className={`grid h-8 w-8 shrink-0 touch-manipulation place-items-center rounded-md border transition-all duration-200 hover:scale-110 active:scale-90 sm:h-7 sm:w-7 ${
         active
           ? "animate-pulse border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/20 text-white shadow-[0_0_12px_-2px_var(--geoos-accent)]"
           : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
