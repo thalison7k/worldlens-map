@@ -89,9 +89,22 @@ export default function AIAssistantApp() {
   const [center, setCenter] = useState(snap.center);
   const [zoom, setZoom] = useState(snap.zoom);
   const [layers, setLayers] = useState<Record<string, number>>(snap.layers);
+  const [hasMemory, setHasMemory] = useState(false);
+  const summaryRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = phase !== "idle";
+
+  // Recupera a conversa e o resumo incremental da sessão anterior.
+  useEffect(() => {
+    const mem = loadMemory();
+    summaryRef.current = mem.summary;
+    setHasMemory(!!mem.summary);
+    if (mem.messages.length) {
+      setMessages(mem.messages.map((m, i) => ({ ...m, ts: Date.now() + i })));
+    }
+  }, []);
+
 
   useBus("map.bbox", (b) => {
     setBbox([b.west, b.south, b.east, b.north]);
