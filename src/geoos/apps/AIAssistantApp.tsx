@@ -5,7 +5,17 @@ import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
 import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
 import { GeoAnswer } from "./GeoAnswer";
+import {
+  clearMemory,
+  loadMemory,
+  memoryBlock,
+  saveMemory,
+  splitForMemory,
+  summarizeMemory,
+  SUMMARIZE_AFTER,
+} from "./chat-memory";
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean; ts: number };
 
@@ -18,8 +28,8 @@ const SUGGESTIONS = [
   "Compare o cenário atual com o padrão climático do El Niño",
 ];
 
-/** Memória enviada ao modelo — mantém contexto sem estourar tokens. */
-const HISTORY_TURNS = 10;
+/** Memória: trocas recentes íntegras + resumo incremental (ver chat-memory.ts). */
+
 
 const SYSTEM_PROMPT = `Você é o Geo AI, consultor sênior de inteligência ambiental do GeoOS Environmental (World Atlas Live), com décadas de atuação em geoprocessamento (GIS), sensoriamento remoto, mudanças climáticas, meteorologia, hidrologia, gestão ambiental, defesa civil, monitoramento de desastres, agricultura de precisão, IoT ambiental, análise espacial e ciência de dados ambientais.
 
@@ -79,9 +89,22 @@ export default function AIAssistantApp() {
   const [center, setCenter] = useState(snap.center);
   const [zoom, setZoom] = useState(snap.zoom);
   const [layers, setLayers] = useState<Record<string, number>>(snap.layers);
+  const [hasMemory, setHasMemory] = useState(false);
+  const summaryRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busy = phase !== "idle";
+
+  // Recupera a conversa e o resumo incremental da sessão anterior.
+  useEffect(() => {
+    const mem = loadMemory();
+    summaryRef.current = mem.summary;
+    setHasMemory(!!mem.summary);
+    if (mem.messages.length) {
+      setMessages(mem.messages.map((m, i) => ({ ...m, ts: Date.now() + i })));
+    }
+  }, []);
+
 
   useBus("map.bbox", (b) => {
     setBbox([b.west, b.south, b.east, b.north]);
@@ -159,15 +182,19 @@ export default function AIAssistantApp() {
         if (controller.signal.aborted) return;
 
         setPhase("thinking");
+        const { recent } = splitForMemory(
+          history.map((m) => ({ role: m.role, content: m.content })),
+        );
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
-            messages: history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content })),
+            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
+            messages: recent,
           }),
         });
+
 
         if (!res.ok || !res.body) {
           const payload = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -200,8 +227,26 @@ export default function AIAssistantApp() {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
           push({ role: "assistant", content: answer });
+
+          // Memória: persiste e atualiza o resumo incremental em segundo plano.
+          const full = [
+            ...history.map((m) => ({ role: m.role, content: m.content })),
+            { role: "assistant" as const, content: answer },
+          ];
+          saveMemory(summaryRef.current, full);
+          const { older } = splitForMemory(full);
+          if (older.length >= SUMMARIZE_AFTER) {
+            void summarizeMemory(summaryRef.current, older)
+              .then((s) => {
+                summaryRef.current = s;
+                setHasMemory(!!s);
+                saveMemory(s, full);
+              })
+              .catch((err) => console.warn("[GeoAI] falha ao resumir memória", err));
+          }
         }
         setStream("");
+
       } catch (e) {
         if ((e as Error)?.name === "AbortError") {
           push({ role: "assistant", content: "Análise cancelada.", error: true });
@@ -236,19 +281,26 @@ export default function AIAssistantApp() {
           <p className="mt-0.5 truncate text-[11px] text-white/50">
             {activeLayers.length} camada{activeLayers.length === 1 ? "" : "s"} · centro {center.lat.toFixed(2)},{" "}
             {center.lng.toFixed(2)} · z{zoom}
+            {hasMemory && <span className="ml-1 text-[color:var(--geoos-accent)]">· memória ativa</span>}
           </p>
         </div>
         {messages.length > 0 && (
           <button
             type="button"
-            onClick={() => setMessages([])}
-            title="Limpar conversa"
-            aria-label="Limpar conversa"
+            onClick={() => {
+              setMessages([]);
+              summaryRef.current = "";
+              setHasMemory(false);
+              clearMemory();
+            }}
+            title="Limpar conversa e memória"
+            aria-label="Limpar conversa e memória"
             className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 text-white/60 transition active:scale-95 hover:bg-white/10 hover:text-white"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
+
       </div>
 
       <div ref={scrollRef} className="geoos-scroll flex-1 overflow-y-auto p-3">

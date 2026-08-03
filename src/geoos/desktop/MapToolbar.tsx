@@ -68,8 +68,9 @@ export function MapToolbar() {
 
   return (
     <>
-      <div className="pointer-events-none fixed left-2 top-1/2 z-20 flex max-h-[75vh] w-auto -translate-y-1/2 flex-col items-start gap-1 duration-500 animate-in fade-in slide-in-from-left-4 sm:left-3">
-        <div data-geoos-obstacle className="pointer-events-auto flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-1 py-1.5 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl">
+      <div className="pointer-events-none fixed left-1.5 top-1/2 z-20 flex max-h-[70vh] w-auto -translate-y-1/2 flex-col items-start gap-1 duration-500 animate-in fade-in slide-in-from-left-4 sm:left-3">
+        <div data-geoos-obstacle className="geoos-scroll pointer-events-auto flex max-h-[70vh] flex-col items-center gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-0.5 py-1 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl sm:gap-1 sm:px-1 sm:py-1.5">
+
           <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
             <Ruler className="h-3.5 w-3.5" />
           </ToolBtn>
@@ -143,7 +144,7 @@ function ToolBtn({ children, active, onClick, title }: { children: React.ReactNo
       onClick={onClick}
       title={title}
       aria-label={title}
-      className={`grid h-9 w-9 shrink-0 touch-manipulation place-items-center rounded-md border transition-all duration-200 hover:scale-110 active:scale-90 sm:h-7 sm:w-7 ${
+      className={`grid h-8 w-8 shrink-0 touch-manipulation place-items-center rounded-md border transition-all duration-200 hover:scale-110 active:scale-90 sm:h-7 sm:w-7 ${
         active
           ? "animate-pulse border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/20 text-white shadow-[0_0_12px_-2px_var(--geoos-accent)]"
           : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
