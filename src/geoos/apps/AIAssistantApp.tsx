@@ -281,19 +281,26 @@ export default function AIAssistantApp() {
           <p className="mt-0.5 truncate text-[11px] text-white/50">
             {activeLayers.length} camada{activeLayers.length === 1 ? "" : "s"} · centro {center.lat.toFixed(2)},{" "}
             {center.lng.toFixed(2)} · z{zoom}
+            {hasMemory && <span className="ml-1 text-[color:var(--geoos-accent)]">· memória ativa</span>}
           </p>
         </div>
         {messages.length > 0 && (
           <button
             type="button"
-            onClick={() => setMessages([])}
-            title="Limpar conversa"
-            aria-label="Limpar conversa"
+            onClick={() => {
+              setMessages([]);
+              summaryRef.current = "";
+              setHasMemory(false);
+              clearMemory();
+            }}
+            title="Limpar conversa e memória"
+            aria-label="Limpar conversa e memória"
             className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 text-white/60 transition active:scale-95 hover:bg-white/10 hover:text-white"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
+
       </div>
 
       <div ref={scrollRef} className="geoos-scroll flex-1 overflow-y-auto p-3">
