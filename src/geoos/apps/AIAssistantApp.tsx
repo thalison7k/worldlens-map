@@ -227,8 +227,26 @@ export default function AIAssistantApp() {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
           push({ role: "assistant", content: answer });
+
+          // Memória: persiste e atualiza o resumo incremental em segundo plano.
+          const full = [
+            ...history.map((m) => ({ role: m.role, content: m.content })),
+            { role: "assistant" as const, content: answer },
+          ];
+          saveMemory(summaryRef.current, full);
+          const { older } = splitForMemory(full);
+          if (older.length >= SUMMARIZE_AFTER) {
+            void summarizeMemory(summaryRef.current, older)
+              .then((s) => {
+                summaryRef.current = s;
+                setHasMemory(!!s);
+                saveMemory(s, full);
+              })
+              .catch((err) => console.warn("[GeoAI] falha ao resumir memória", err));
+          }
         }
         setStream("");
+
       } catch (e) {
         if ((e as Error)?.name === "AbortError") {
           push({ role: "assistant", content: "Análise cancelada.", error: true });
