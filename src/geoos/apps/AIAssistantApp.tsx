@@ -5,7 +5,17 @@ import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
 import { REAL_LAYER_DEFS } from "@/lib/gis/real-layers";
 import { GeoAnswer } from "./GeoAnswer";
+import {
+  clearMemory,
+  loadMemory,
+  memoryBlock,
+  saveMemory,
+  splitForMemory,
+  summarizeMemory,
+  SUMMARIZE_AFTER,
+} from "./chat-memory";
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean; ts: number };
 
