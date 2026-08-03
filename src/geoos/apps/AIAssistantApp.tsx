@@ -169,15 +169,19 @@ export default function AIAssistantApp() {
         if (controller.signal.aborted) return;
 
         setPhase("thinking");
+        const { recent } = splitForMemory(
+          history.map((m) => ({ role: m.role, content: m.content })),
+        );
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
-            messages: history.slice(-HISTORY_TURNS).map((m) => ({ role: m.role, content: m.content })),
+            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
+            messages: recent,
           }),
         });
+
 
         if (!res.ok || !res.body) {
           const payload = (await res.json().catch(() => null)) as { error?: string } | null;
