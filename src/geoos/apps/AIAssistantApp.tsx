@@ -28,8 +28,8 @@ const SUGGESTIONS = [
   "Compare o cenário atual com o padrão climático do El Niño",
 ];
 
-/** Memória enviada ao modelo — mantém contexto sem estourar tokens. */
-const HISTORY_TURNS = 10;
+/** Memória: trocas recentes íntegras + resumo incremental (ver chat-memory.ts). */
+
 
 const SYSTEM_PROMPT = `Você é o Geo AI, consultor sênior de inteligência ambiental do GeoOS Environmental (World Atlas Live), com décadas de atuação em geoprocessamento (GIS), sensoriamento remoto, mudanças climáticas, meteorologia, hidrologia, gestão ambiental, defesa civil, monitoramento de desastres, agricultura de precisão, IoT ambiental, análise espacial e ciência de dados ambientais.
 
