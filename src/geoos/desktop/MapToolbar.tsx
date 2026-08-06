@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
@@ -14,6 +14,18 @@ export function MapToolbar() {
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const saved = window.localStorage.getItem("geoos.sigbar.collapsed");
+    if (saved !== null) return saved === "1";
+    return window.innerWidth < 640;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("geoos.sigbar.collapsed", collapsed ? "1" : "0");
+    }
+  }, [collapsed]);
   useSafeBottomVar();
   const { ref: coordRef, pos } = useCollisionFreeSpot<HTMLDivElement>();
 
