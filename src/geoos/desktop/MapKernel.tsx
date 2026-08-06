@@ -338,6 +338,31 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       }
     };
 
+    // ── Time Machine: imagem de satélite NASA GIBS da data escolhida ──
+    let tmLayer: L.TileLayer | null = null;
+    const onTimeMachine = ({ date }: { date: string | null }) => {
+      const m = mapRef.current;
+      if (!m) return;
+      if (!date) {
+        if (tmLayer) { m.removeLayer(tmLayer); tmLayer = null; }
+        return;
+      }
+      const url =
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+      if (!tmLayer) {
+        tmLayer = safeTileLayer(url, {
+          maxNativeZoom: 9,
+          opacity: 0.92,
+          attribution: "NASA GIBS · MODIS Terra",
+        });
+        tmLayer.addTo(m);
+        tmLayer.bringToFront();
+      } else {
+        tmLayer.setUrl(url);
+      }
+    };
+    bus.on("timemachine.date", onTimeMachine);
+
     bus.on("map.flyTo", onFly);
     bus.on("map.setBase", onBase);
     bus.on("map.toggleLayer", onToggle);
@@ -350,6 +375,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("map.fullscreen", onFullscreen);
     bus.on("map.export", onExport);
     return () => {
+      bus.off("timemachine.date", onTimeMachine);
+      if (tmLayer && mapRef.current) mapRef.current.removeLayer(tmLayer);
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
       bus.off("map.toggleLayer", onToggle);
