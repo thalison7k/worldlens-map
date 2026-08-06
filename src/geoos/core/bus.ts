@@ -47,6 +47,8 @@ export type GeoOSEvents = {
   "filters.change": { key: string; value: unknown };
   "theme.change": { theme: "dark" | "light"; variant?: string };
   "timeline.change": { t: number; range: TimelineRange };
+  /** Time Machine: imagem de satélite histórica sobre o mapa (data ISO YYYY-MM-DD). */
+  "timemachine.date": { date: string | null };
   "analysis.result": { region: string; metrics: Record<string, string | number> };
 };
 
