@@ -69,34 +69,49 @@ export function MapToolbar() {
   return (
     <>
       <div className="pointer-events-none fixed left-1.5 top-1/2 z-20 flex max-h-[70vh] w-auto -translate-y-1/2 flex-col items-start gap-1 duration-500 animate-in fade-in slide-in-from-left-4 sm:left-3">
-        <div data-geoos-obstacle className="geoos-scroll pointer-events-auto flex max-h-[70vh] flex-col items-center gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-0.5 py-1 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl sm:gap-1 sm:px-1 sm:py-1.5">
+        <div
+          data-geoos-obstacle
+          className="geoos-scroll pointer-events-auto flex max-h-[70vh] flex-col items-center gap-0.5 overflow-y-auto rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/85 px-0.5 py-1 shadow-lg backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-xl sm:gap-1 sm:px-1 sm:py-1.5"
+        >
+          <ToolBtn
+            title={collapsed ? "Expandir ferramentas" : "Recolher ferramentas"}
+            onClick={() => setCollapsed((c) => !c)}
+          >
+            {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+          </ToolBtn>
 
-          <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
-            <Ruler className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn title="Medir área" active={measure === "area"} onClick={() => toggleMeasure("area")}>
-            <Square className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <span className="my-0.5 h-px w-4 bg-white/10" />
-          <ToolBtn title="Minha localização (GPS)" onClick={locate}>
-            <LocateFixed className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
-            <Maximize2 className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
-            <Camera className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
-            <Download className="h-3.5 w-3.5" />
-          </ToolBtn>
-          <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
-            <Download className="h-3.5 w-3.5 rotate-90" />
-          </ToolBtn>
-          <span className="my-0.5 h-px w-4 bg-white/10" />
-          <Compass className="h-3.5 w-3.5 text-white/50 transition-transform duration-500 hover:rotate-180" />
+          {!collapsed && (
+            <div className="flex flex-col items-center gap-0.5 duration-300 animate-in fade-in slide-in-from-left-2 sm:gap-1">
+              <span className="my-0.5 h-px w-4 bg-white/10" />
+              <ToolBtn title="Medir distância" active={measure === "distance"} onClick={() => toggleMeasure("distance")}>
+                <Ruler className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn title="Medir área" active={measure === "area"} onClick={() => toggleMeasure("area")}>
+                <Square className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <span className="my-0.5 h-px w-4 bg-white/10" />
+              <ToolBtn title="Minha localização (GPS)" onClick={locate}>
+                <LocateFixed className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
+                <Maximize2 className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
+                <Camera className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
+                <Download className="h-3.5 w-3.5" />
+              </ToolBtn>
+              <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
+                <Download className="h-3.5 w-3.5 rotate-90" />
+              </ToolBtn>
+              <span className="my-0.5 h-px w-4 bg-white/10" />
+              <Compass className="h-3.5 w-3.5 text-white/50 transition-transform duration-500 hover:rotate-180" />
+            </div>
+          )}
         </div>
       </div>
+
 
       {/* Coordenadas — posição calculada por detecção de colisão com os demais painéis */}
       <div
