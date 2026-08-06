@@ -45,6 +45,17 @@ export const APPS: GeoApp[] = [
     component: AnalyticsApp,
   },
   {
+    id: "timemachine",
+    name: "Time Machine",
+    description: "Reconstrói e anima o histórico ambiental da área visível.",
+    icon: History,
+    category: "core",
+    color: "25 90% 60%",
+    defaultSize: { width: 400, height: 640 },
+    singleton: true,
+    component: TimeMachineApp,
+  },
+  {
     id: "iot",
     name: "Sensores IoT",
     description: "Sensores do dispositivo publicados na nuvem em tempo real.",
