@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { BarChart3, LayoutDashboard, Layers, Radio, Sparkles } from "lucide-react";
+import { BarChart3, History, LayoutDashboard, Layers, Radio, Sparkles } from "lucide-react";
 import type { GeoApp } from "@/geoos/core/types";
 
 const LayersApp = lazy(() => import("./LayersApp"));
@@ -7,6 +7,7 @@ const DashboardApp = lazy(() => import("./DashboardApp"));
 const AnalyticsApp = lazy(() => import("./AnalyticsApp"));
 const AIAssistantApp = lazy(() => import("./AIAssistantApp"));
 const IoTSensorsApp = lazy(() => import("./IoTSensorsApp"));
+const TimeMachineApp = lazy(() => import("./TimeMachineApp"));
 
 
 export const APPS: GeoApp[] = [
@@ -42,6 +43,17 @@ export const APPS: GeoApp[] = [
     defaultSize: { width: 420, height: 640 },
     singleton: true,
     component: AnalyticsApp,
+  },
+  {
+    id: "timemachine",
+    name: "Time Machine",
+    description: "Reconstrói e anima o histórico ambiental da área visível.",
+    icon: History,
+    category: "core",
+    color: "25 90% 60%",
+    defaultSize: { width: 400, height: 640 },
+    singleton: true,
+    component: TimeMachineApp,
   },
   {
     id: "iot",
