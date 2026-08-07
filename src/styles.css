@@ -304,3 +304,31 @@ body { touch-action: manipulation; }
   .geoos-window .react-draggable + div,
   .geoos-window ~ div { touch-action: none; }
 }
+
+/* ── Ciclones tropicais: ícone girando ───────────────────────────────── */
+.geoos-cyclone { background: none; border: 0; }
+.geoos-cyclone-spin {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: geoos-cyclone-rotate 6s linear infinite;
+}
+@keyframes geoos-cyclone-rotate { to { transform: rotate(360deg); } }
+
+/* ── Modo globo: mundo recortado em esfera (linha do tempo) ──────────── */
+.leaflet-container.geoos-globe {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0 43%, rgba(0, 0, 0, 0.35) 46%, transparent 48%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0 43%, rgba(0, 0, 0, 0.35) 46%, transparent 48%);
+  transition: -webkit-mask-image 400ms ease, mask-image 400ms ease;
+}
+.leaflet-container.geoos-globe::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.16) 0 12%, transparent 34%),
+    radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(0, 0, 0, 0.45) 43%, transparent 47%);
+}
+.leaflet-container.geoos-globe .leaflet-control-attribution { opacity: 0.35; }
