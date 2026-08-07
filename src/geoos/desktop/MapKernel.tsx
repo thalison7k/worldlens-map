@@ -364,6 +364,28 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     };
     bus.on("timemachine.date", onTimeMachine);
 
+    // ── Modo globo: mundo esférico navegável (usado pela linha do tempo) ──
+    let globeOn = false;
+    const onGlobe = ({ on }: { on: boolean }) => {
+      const m = mapRef.current;
+      if (!m || on === globeOn) return;
+      globeOn = on;
+      const c = m.getContainer();
+      c.classList.toggle("geoos-globe", on);
+      if (on) {
+        m.setMaxBounds(L.latLngBounds([-85, -180], [85, 180]));
+        m.setMinZoom(1);
+        m.flyTo([10, m.getCenter().lng], 2, { duration: 0.9 });
+      } else {
+        m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
+        m.setMinZoom(0);
+      }
+      setTimeout(() => m.invalidateSize({ animate: false }), 420);
+    };
+    bus.on("map.globe", onGlobe);
+
+
+
     bus.on("map.flyTo", onFly);
     bus.on("map.setBase", onBase);
     bus.on("map.toggleLayer", onToggle);
