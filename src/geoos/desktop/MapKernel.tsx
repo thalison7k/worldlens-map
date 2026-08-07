@@ -286,18 +286,19 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         if (BBOX_DRIVEN_LAYERS.has(id) && !SELF_REFRESHING_LAYERS.has(id)) buildLayer(id);
       });
     };
+    let timelineT: ReturnType<typeof setTimeout> | null = null;
     const onTimeline = (p: { range: string; t?: number }) => {
       const prev = timeframeRef.current;
       const nextRange = (p.range as Timeframe) ?? prev;
-      // Only rebuild when the range bucket actually changes (avoid rebuilding
-      // every 250ms during play). Playback ticks (t) drive opacity/fade only.
-      if (nextRange === prev) {
-        const t = typeof p.t === "number" ? p.t / 100 : 1;
-        builtRef.current.forEach((b) => b.setOpacity(Math.max(0.15, t)));
-        return;
-      }
+      // Playback ticks (t) NEVER alter opacity — isso piscava/apagava as camadas
+      // durante a Time Machine. Só o bucket de intervalo dispara rebuild, e
+      // ainda assim com debounce para não travar o mapa durante o play.
+      if (nextRange === prev) return;
       timeframeRef.current = nextRange;
-      builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
+      if (timelineT) clearTimeout(timelineT);
+      timelineT = setTimeout(() => {
+        builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
+      }, 400);
     };
     const onFilters = (p: { key: string; value: unknown }) => {
       const next = { ...filtersRef.current } as unknown as Record<string, unknown>;
