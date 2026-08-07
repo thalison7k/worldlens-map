@@ -14,6 +14,17 @@ const AlertsApp = lazy(() => import("./AlertsApp"));
 
 export const APPS: GeoApp[] = [
   {
+    id: "alerts",
+    name: "Alertas",
+    description: "Ciclones, focos de calor, sismos e ar — em tempo real.",
+    icon: Siren,
+    category: "core",
+    color: "0 85% 62%",
+    defaultSize: { width: 400, height: 640 },
+    singleton: true,
+    component: AlertsApp,
+  },
+  {
     id: "dashboard",
     name: "Dashboard",
     description: "Visão executiva ambiental em tempo real.",
