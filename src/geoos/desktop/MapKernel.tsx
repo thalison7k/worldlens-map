@@ -399,6 +399,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("map.export", onExport);
     return () => {
       bus.off("timemachine.date", onTimeMachine);
+      bus.off("map.globe", onGlobe);
       if (tmLayer && mapRef.current) mapRef.current.removeLayer(tmLayer);
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
