@@ -286,18 +286,19 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         if (BBOX_DRIVEN_LAYERS.has(id) && !SELF_REFRESHING_LAYERS.has(id)) buildLayer(id);
       });
     };
+    let timelineT: ReturnType<typeof setTimeout> | null = null;
     const onTimeline = (p: { range: string; t?: number }) => {
       const prev = timeframeRef.current;
       const nextRange = (p.range as Timeframe) ?? prev;
-      // Only rebuild when the range bucket actually changes (avoid rebuilding
-      // every 250ms during play). Playback ticks (t) drive opacity/fade only.
-      if (nextRange === prev) {
-        const t = typeof p.t === "number" ? p.t / 100 : 1;
-        builtRef.current.forEach((b) => b.setOpacity(Math.max(0.15, t)));
-        return;
-      }
+      // Playback ticks (t) NEVER alter opacity — isso piscava/apagava as camadas
+      // durante a Time Machine. Só o bucket de intervalo dispara rebuild, e
+      // ainda assim com debounce para não travar o mapa durante o play.
+      if (nextRange === prev) return;
       timeframeRef.current = nextRange;
-      builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
+      if (timelineT) clearTimeout(timelineT);
+      timelineT = setTimeout(() => {
+        builtRef.current.forEach((_b, id) => { if (!SELF_REFRESHING_LAYERS.has(id)) buildLayer(id); });
+      }, 400);
     };
     const onFilters = (p: { key: string; value: unknown }) => {
       const next = { ...filtersRef.current } as unknown as Record<string, unknown>;
@@ -363,6 +364,28 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     };
     bus.on("timemachine.date", onTimeMachine);
 
+    // ── Modo globo: mundo esférico navegável (usado pela linha do tempo) ──
+    let globeOn = false;
+    const onGlobe = ({ on }: { on: boolean }) => {
+      const m = mapRef.current;
+      if (!m || on === globeOn) return;
+      globeOn = on;
+      const c = m.getContainer();
+      c.classList.toggle("geoos-globe", on);
+      if (on) {
+        m.setMaxBounds(L.latLngBounds([-85, -180], [85, 180]));
+        m.setMinZoom(1);
+        m.flyTo([10, m.getCenter().lng], 2, { duration: 0.9 });
+      } else {
+        m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
+        m.setMinZoom(0);
+      }
+      setTimeout(() => m.invalidateSize({ animate: false }), 420);
+    };
+    bus.on("map.globe", onGlobe);
+
+
+
     bus.on("map.flyTo", onFly);
     bus.on("map.setBase", onBase);
     bus.on("map.toggleLayer", onToggle);
@@ -376,6 +399,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     bus.on("map.export", onExport);
     return () => {
       bus.off("timemachine.date", onTimeMachine);
+      bus.off("map.globe", onGlobe);
       if (tmLayer && mapRef.current) mapRef.current.removeLayer(tmLayer);
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);

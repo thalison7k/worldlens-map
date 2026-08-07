@@ -15,6 +15,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
 import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
 import { Route as ApiPublicEnsoRouteImport } from './routes/api/public/enso'
+import { Route as ApiPublicCyclonesRouteImport } from './routes/api/public/cyclones'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -46,11 +47,17 @@ const ApiPublicEnsoRoute = ApiPublicEnsoRouteImport.update({
   path: '/api/public/enso',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCyclonesRoute = ApiPublicCyclonesRouteImport.update({
+  id: '/api/public/cyclones',
+  path: '/api/public/cyclones',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPublicCyclonesRoute: typeof ApiPublicCyclonesRoute
   ApiPublicEnsoRoute: typeof ApiPublicEnsoRoute
   ApiPublicFirmsRoute: typeof ApiPublicFirmsRoute
   ApiPublicOpenaqRoute: typeof ApiPublicOpenaqRoute
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEnsoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cyclones': {
+      id: '/api/public/cyclones'
+      path: '/api/public/cyclones'
+      fullPath: '/api/public/cyclones'
+      preLoaderRoute: typeof ApiPublicCyclonesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPublicCyclonesRoute: ApiPublicCyclonesRoute,
   ApiPublicEnsoRoute: ApiPublicEnsoRoute,
   ApiPublicFirmsRoute: ApiPublicFirmsRoute,
   ApiPublicOpenaqRoute: ApiPublicOpenaqRoute,
@@ -166,13 +187,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

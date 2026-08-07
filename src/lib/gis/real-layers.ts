@@ -5,6 +5,7 @@ import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
 import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
+import { fetchCyclones, cycloneCategory, bearingLabel } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
@@ -509,6 +510,67 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       return {
         count: 1,
         setOpacity: (o) => rect.setStyle({ opacity: o, fillOpacity: 0.35 * o }),
+      };
+    }),
+  },
+  {
+    id: "cyclones" as never,
+    label: "Ciclones tropicais (NOAA NHC)",
+    icon: "🌀",
+    category: "clima",
+    order: 97,
+    defaultVisible: true,
+    defaultOpacity: 1,
+    legend: [
+      { color: "#94a3b8", label: "Depressão tropical" },
+      { color: "#38bdf8", label: "Tempestade tropical" },
+      { color: "#f59e0b", label: "Categoria 1" },
+      { color: "#ea580c", label: "Categoria 2" },
+      { color: "#dc2626", label: "Categoria 3" },
+      { color: "#b91c1c", label: "Categoria 4" },
+      { color: "#7f1d1d", label: "Categoria 5" },
+    ],
+    build: asyncGroup(async (_ctx, group) => {
+      const storms = await fetchCyclones();
+      const shapes: Array<L.Circle | L.Marker> = [];
+      for (const s of storms) {
+        const { label, color } = cycloneCategory(s.intensityKt);
+        const radiusM = Math.max(80_000, (s.intensityKt ?? 30) * 3_000);
+        const eye = L.circle([s.lat, s.lng], {
+          radius: radiusM, color, fillColor: color, fillOpacity: 0.18, weight: 2,
+        });
+        const icon = L.divIcon({
+          className: "geoos-cyclone",
+          html: `<div class="geoos-cyclone-spin" style="color:${color}">🌀</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        });
+        const marker = L.marker([s.lat, s.lng], { icon });
+        const popup =
+          `<div style="min-width:240px">
+            <div style="font-weight:700;font-size:14px;color:${color}">🌀 ${s.name} · ${label}</div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+              <b>Classificação:</b> ${s.classification}<br/>
+              <b>Ventos máximos:</b> ${s.intensityKt != null ? `${s.intensityKt} kt (${Math.round(s.intensityKt * 1.852)} km/h)` : "n/d"}<br/>
+              <b>Pressão central:</b> ${s.pressureMb != null ? `${s.pressureMb} hPa` : "n/d"}<br/>
+              <b>Deslocamento:</b> ${bearingLabel(s.movementDir)}${s.movementSpeedKt != null ? ` a ${s.movementSpeedKt} kt` : ""}<br/>
+              <b>Coords:</b> ${s.lat.toFixed(2)}, ${s.lng.toFixed(2)}<br/>
+              <b>Atualizado:</b> ${s.lastUpdate ? new Date(s.lastUpdate).toLocaleString("pt-BR") : "n/d"}<br/>
+              <b>Fonte:</b> NOAA National Hurricane Center
+            </div>
+          </div>`;
+        eye.bindPopup(popup);
+        marker.bindPopup(popup);
+        eye.addTo(group);
+        marker.addTo(group);
+        shapes.push(eye, marker);
+      }
+      return {
+        count: storms.length,
+        setOpacity: (o) => shapes.forEach((s) => {
+          if ("setStyle" in s) (s as L.Circle).setStyle({ opacity: o, fillOpacity: 0.18 * o });
+          else (s as L.Marker).setOpacity(o);
+        }),
       };
     }),
   },

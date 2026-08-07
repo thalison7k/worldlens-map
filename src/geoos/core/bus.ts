@@ -49,6 +49,8 @@ export type GeoOSEvents = {
   "timeline.change": { t: number; range: TimelineRange };
   /** Time Machine: imagem de satélite histórica sobre o mapa (data ISO YYYY-MM-DD). */
   "timemachine.date": { date: string | null };
+  /** Modo globo: recorta o mapa em esfera navegável (usado pela linha do tempo). */
+  "map.globe": { on: boolean };
   "analysis.result": { region: string; metrics: Record<string, string | number> };
 };
 

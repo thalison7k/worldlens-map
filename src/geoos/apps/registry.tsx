@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { BarChart3, History, LayoutDashboard, Layers, Radio, Sparkles } from "lucide-react";
+import { BarChart3, History, LayoutDashboard, Layers, Radio, Siren, Sparkles } from "lucide-react";
 import type { GeoApp } from "@/geoos/core/types";
 
 const LayersApp = lazy(() => import("./LayersApp"));
@@ -8,9 +8,22 @@ const AnalyticsApp = lazy(() => import("./AnalyticsApp"));
 const AIAssistantApp = lazy(() => import("./AIAssistantApp"));
 const IoTSensorsApp = lazy(() => import("./IoTSensorsApp"));
 const TimeMachineApp = lazy(() => import("./TimeMachineApp"));
+const AlertsApp = lazy(() => import("./AlertsApp"));
+
 
 
 export const APPS: GeoApp[] = [
+  {
+    id: "alerts",
+    name: "Alertas",
+    description: "Ciclones, focos de calor, sismos e ar — em tempo real.",
+    icon: Siren,
+    category: "core",
+    color: "0 85% 62%",
+    defaultSize: { width: 400, height: 640 },
+    singleton: true,
+    component: AlertsApp,
+  },
   {
     id: "dashboard",
     name: "Dashboard",

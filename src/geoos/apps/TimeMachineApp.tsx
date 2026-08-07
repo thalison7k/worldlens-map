@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Pause, Play, RotateCcw, Satellite, SkipBack, SkipForward } from "lucide-react";
+import { Globe2, Pause, Play, RotateCcw, Satellite, SkipBack, SkipForward } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
@@ -34,6 +34,7 @@ export default function TimeMachineApp() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(450);
   const [satellite, setSatellite] = useState(true);
+  const [globe, setGlobe] = useState(true);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useBus("map.bbox", (b) => {
@@ -56,14 +57,27 @@ export default function TimeMachineApp() {
 
   const current = rows[i];
 
-  // Sincroniza satélite histórico + timeline global do GeoOS
+  // Sincroniza satélite histórico com a data escolhida. A timeline global só é
+  // notificada quando a FAIXA muda (14/30/90 d) — emitir a cada dia fazia as
+  // camadas piscarem e travarem o mapa durante o play.
   useEffect(() => {
     if (!current) return;
     bus.emit("timemachine.date", { date: satellite ? current.date : null });
-    bus.emit("timeline.change", { t: new Date(current.date).getTime(), range: "30d" });
   }, [current?.date, satellite]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { bus.emit("timemachine.date", { date: null }); }, []);
+  useEffect(() => {
+    bus.emit("timeline.change", { t: Date.now(), range: days >= 90 ? "12m" : "30d" });
+  }, [days]);
+
+  // Modo globo: mundo esférico navegável enquanto a linha do tempo está aberta.
+  useEffect(() => {
+    bus.emit("map.globe", { on: globe });
+  }, [globe]);
+
+  useEffect(() => () => {
+    bus.emit("timemachine.date", { date: null });
+    bus.emit("map.globe", { on: false });
+  }, []);
 
   useEffect(() => {
     if (timer.current) clearInterval(timer.current);
@@ -110,18 +124,32 @@ export default function TimeMachineApp() {
             {center.lat.toFixed(2)}, {center.lng.toFixed(2)}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setSatellite((s) => !s)}
-          title="Sobrepor imagem de satélite histórica (NASA GIBS)"
-          className={`flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] transition-all active:scale-95 ${
-            satellite
-              ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
-              : "border-white/10 bg-white/[0.03] text-white/60"
-          }`}
-        >
-          <Satellite className="h-3.5 w-3.5" /> Satélite
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setGlobe((g) => !g)}
+            title="Mundo em formato esférico (modo globo)"
+            className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-95 ${
+              globe
+                ? "border-sky-400/60 bg-sky-400/15 text-white"
+                : "border-white/10 bg-white/[0.03] text-white/60"
+            }`}
+          >
+            <Globe2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSatellite((s) => !s)}
+            title="Sobrepor imagem de satélite histórica (NASA GIBS)"
+            className={`flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] transition-all active:scale-95 ${
+              satellite
+                ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                : "border-white/10 bg-white/[0.03] text-white/60"
+            }`}
+          >
+            <Satellite className="h-3.5 w-3.5" /> Satélite
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
