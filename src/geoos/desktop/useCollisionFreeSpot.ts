@@ -54,30 +54,27 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
         obstacles.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
       });
 
-      // Candidatos, em ordem de preferência (todos dentro da viewport).
-      const candidates: Array<{ left: number; top: number }> = [
-        ...(() => {
-          // Colunas: depois de um rail lateral (se existir), à esquerda e à direita.
-          const railRight = obstacles
-            .filter((o) => o.left <= MARGIN + 4 && o.bottom - o.top > vh * 0.5)
-            .reduce((m, o) => Math.max(m, o.right), 0);
-          const xs = [
-            railRight ? railRight + MARGIN : MARGIN,
-            MARGIN,
-            vw - w - MARGIN,
-            Math.max(MARGIN, (vw - w) / 2),
-          ];
-          const bottom = vh - h - MARGIN - safeBottom;
-          const ys = [bottom, bottom - 52, bottom - 104, bottom - 156, MARGIN + 52, MARGIN];
-          // Faixas livres entre painéis (ex.: entre a janela do app e o dock).
-          const edges = obstacles.map((o) => o.bottom + MARGIN).filter((y) => y > 0 && y + h < vh);
-          for (const y of edges) ys.splice(0, 0, y);
-          const out: Array<{ left: number; top: number }> = [];
-          for (const y of ys) for (const x of xs) out.push({ left: x, top: y });
-          return out;
-        })(),
+      // Varredura em grade de toda a viewport. Percorremos as posições
+      // possíveis (passo de 16px, limitado a ~40x40 amostras) e escolhemos a
+      // primeira totalmente livre, priorizando o canto inferior esquerdo e,
+      // em seguida, faixas próximas às bordas. Funciona em qualquer largura
+      // de tela porque os limites derivam da viewport medida em runtime.
+      const maxLeft = Math.max(MARGIN, vw - w - MARGIN);
+      const maxTop = Math.max(MARGIN, vh - h - MARGIN - safeBottom);
+      const stepX = Math.max(16, Math.round((maxLeft - MARGIN) / 40) || 16);
+      const stepY = Math.max(16, Math.round((maxTop - MARGIN) / 40) || 16);
 
-      ];
+      const xs: number[] = [];
+      for (let x = MARGIN; x <= maxLeft; x += stepX) xs.push(x);
+      if (xs[xs.length - 1] !== maxLeft) xs.push(maxLeft);
+
+      const ys: number[] = [];
+      for (let y = maxTop; y >= MARGIN; y -= stepY) ys.push(y);
+      if (ys[ys.length - 1] !== MARGIN) ys.push(MARGIN);
+
+      const candidates: Array<{ left: number; top: number }> = [];
+      for (const y of ys) for (const x of xs) candidates.push({ left: x, top: y });
+
 
 
       let best = candidates[0];
