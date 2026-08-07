@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Pause, Play, RotateCcw, Satellite, SkipBack, SkipForward } from "lucide-react";
+import { Globe2, Pause, Play, RotateCcw, Satellite, SkipBack, SkipForward } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
