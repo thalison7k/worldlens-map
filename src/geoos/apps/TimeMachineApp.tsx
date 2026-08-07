@@ -124,18 +124,32 @@ export default function TimeMachineApp() {
             {center.lat.toFixed(2)}, {center.lng.toFixed(2)}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setSatellite((s) => !s)}
-          title="Sobrepor imagem de satélite histórica (NASA GIBS)"
-          className={`flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] transition-all active:scale-95 ${
-            satellite
-              ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
-              : "border-white/10 bg-white/[0.03] text-white/60"
-          }`}
-        >
-          <Satellite className="h-3.5 w-3.5" /> Satélite
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setGlobe((g) => !g)}
+            title="Mundo em formato esférico (modo globo)"
+            className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-95 ${
+              globe
+                ? "border-sky-400/60 bg-sky-400/15 text-white"
+                : "border-white/10 bg-white/[0.03] text-white/60"
+            }`}
+          >
+            <Globe2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSatellite((s) => !s)}
+            title="Sobrepor imagem de satélite histórica (NASA GIBS)"
+            className={`flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] transition-all active:scale-95 ${
+              satellite
+                ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                : "border-white/10 bg-white/[0.03] text-white/60"
+            }`}
+          >
+            <Satellite className="h-3.5 w-3.5" /> Satélite
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
