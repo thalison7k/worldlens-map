@@ -5,6 +5,7 @@ import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
 import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
+import { fetchCyclones, cycloneCategory, bearingLabel } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
