@@ -57,14 +57,27 @@ export default function TimeMachineApp() {
 
   const current = rows[i];
 
-  // Sincroniza satélite histórico + timeline global do GeoOS
+  // Sincroniza satélite histórico com a data escolhida. A timeline global só é
+  // notificada quando a FAIXA muda (14/30/90 d) — emitir a cada dia fazia as
+  // camadas piscarem e travarem o mapa durante o play.
   useEffect(() => {
     if (!current) return;
     bus.emit("timemachine.date", { date: satellite ? current.date : null });
-    bus.emit("timeline.change", { t: new Date(current.date).getTime(), range: "30d" });
   }, [current?.date, satellite]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { bus.emit("timemachine.date", { date: null }); }, []);
+  useEffect(() => {
+    bus.emit("timeline.change", { t: Date.now(), range: days >= 90 ? "12m" : "30d" });
+  }, [days]);
+
+  // Modo globo: mundo esférico navegável enquanto a linha do tempo está aberta.
+  useEffect(() => {
+    bus.emit("map.globe", { on: globe });
+  }, [globe]);
+
+  useEffect(() => () => {
+    bus.emit("timemachine.date", { date: null });
+    bus.emit("map.globe", { on: false });
+  }, []);
 
   useEffect(() => {
     if (timer.current) clearInterval(timer.current);
