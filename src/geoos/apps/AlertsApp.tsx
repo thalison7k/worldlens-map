@@ -102,16 +102,16 @@ export default function AlertsApp() {
       });
     }
 
-    for (const a of air.filter((s) => (s.pm25 ?? 0) >= 35).slice(0, 10)) {
-      const v = a.pm25 ?? 0;
+    for (const a of air.filter((s) => (s.value ?? 0) >= 35).slice(0, 10)) {
+      const v = a.value ?? 0;
       out.push({
         id: `air:${a.lat.toFixed(2)}:${a.lng.toFixed(2)}`,
         kind: "ar",
         level: v >= 75 ? "critico" : v >= 55 ? "alto" : "moderado",
-        title: `Ar insalubre · PM2.5 ${v.toFixed(0)} µg/m³`,
-        detail: a.name ?? `${a.lat.toFixed(2)}, ${a.lng.toFixed(2)}`,
+        title: `Ar insalubre · ${a.parameter.toUpperCase()} ${v.toFixed(0)} ${a.unit}`,
+        detail: a.city || `${a.lat.toFixed(2)}, ${a.lng.toFixed(2)}`,
         lat: a.lat, lng: a.lng,
-        when: Date.now(),
+        when: a.updated || Date.now(),
       });
     }
 
