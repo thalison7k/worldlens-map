@@ -34,6 +34,7 @@ export default function TimeMachineApp() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(450);
   const [satellite, setSatellite] = useState(true);
+  const [globe, setGlobe] = useState(true);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useBus("map.bbox", (b) => {
