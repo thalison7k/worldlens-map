@@ -445,7 +445,16 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
   return (
     <>
+      {globe && <div className="geoos-globe-space" aria-hidden />}
       <div ref={el} className="fixed inset-0 z-0" aria-label="MapKernel" />
+      {globe && (
+        <div className="geoos-globe-fx" aria-hidden>
+          <div className="geoos-globe-atmo" />
+          <div className="geoos-globe-shade" />
+          <div className="geoos-globe-gloss" />
+          <div className="geoos-globe-terminator" />
+        </div>
+      )}
     </>
   );
 }
