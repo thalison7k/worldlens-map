@@ -380,10 +380,22 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       c.classList.toggle("geoos-globe", on);
       if (on) {
         m.setMaxBounds(L.latLngBounds([-85, -180], [85, 180]));
+        m.options.maxBoundsViscosity = 1;
         m.setMinZoom(1);
-        m.flyTo([10, m.getCenter().lng], 2, { duration: 0.9 });
+        m.invalidateSize({ animate: false });
+        // encaixa o mundo dentro do recorte circular (84vmin de diâmetro)
+        const size = m.getSize();
+        const d = 0.84 * Math.min(window.innerWidth, window.innerHeight);
+        const padX = Math.max(0, (size.x - d) / 2);
+        const padY = Math.max(0, (size.y - d) / 2);
+        m.flyToBounds(L.latLngBounds([-70, -175], [75, 175]), {
+          paddingTopLeft: [padX, padY],
+          paddingBottomRight: [padX, padY],
+          duration: 0.9,
+        });
       } else {
         m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
+        m.options.maxBoundsViscosity = 0;
         m.setMinZoom(0);
       }
       setTimeout(() => m.invalidateSize({ animate: false }), 420);
