@@ -358,8 +358,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         tmLayer = safeTileLayer(url, {
           maxNativeZoom: 9,
           opacity: 0.92,
-          noWrap: true,
-          bounds: L.latLngBounds([-85.05, -180], [85.05, 180]),
+          // wrap habilitado: evita "fatias" pretas nas bordas do globo
+          noWrap: false,
           attribution: "NASA GIBS · MODIS Terra",
         });
         tmLayer.addTo(m);
