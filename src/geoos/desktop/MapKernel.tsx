@@ -48,6 +48,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
+  const [globe, setGlobe] = useState(false);
   
 
   // create map once
@@ -358,8 +359,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         tmLayer = safeTileLayer(url, {
           maxNativeZoom: 9,
           opacity: 0.92,
-          noWrap: true,
-          bounds: L.latLngBounds([-85.05, -180], [85.05, 180]),
+          // wrap habilitado: evita "fatias" pretas nas bordas do globo
+          noWrap: false,
           attribution: "NASA GIBS · MODIS Terra",
         });
         tmLayer.addTo(m);
@@ -370,7 +371,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     };
     bus.on("timemachine.date", onTimeMachine);
 
-    // ── Modo globo: mundo esférico navegável (usado pela linha do tempo) ──
+    // ── Modo globo: face esférica navegável (usada pela linha do tempo) ──
     let globeOn = false;
     const onGlobe = ({ on }: { on: boolean }) => {
       const m = mapRef.current;
@@ -378,21 +379,19 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       globeOn = on;
       const c = m.getContainer();
       c.classList.toggle("geoos-globe", on);
+      setGlobe(on);
       if (on) {
-        m.setMaxBounds(L.latLngBounds([-85, -180], [85, 180]));
-        m.options.maxBoundsViscosity = 1;
-        m.setMinZoom(1);
+        // Sem maxBounds: o globo gira livremente (tiles fazem wrap horizontal).
+        m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
+        m.options.maxBoundsViscosity = 0;
+        m.setMinZoom(0);
         m.invalidateSize({ animate: false });
-        // encaixa o mundo dentro do recorte circular (84vmin de diâmetro)
-        const size = m.getSize();
+        // Zoom mínimo para que os tiles COBRAM todo o recorte circular
+        // (mundo = 256·2^z px). Evita cantos pretos dentro da esfera.
         const d = 0.84 * Math.min(window.innerWidth, window.innerHeight);
-        const padX = Math.max(0, (size.x - d) / 2);
-        const padY = Math.max(0, (size.y - d) / 2);
-        m.flyToBounds(L.latLngBounds([-70, -175], [75, 175]), {
-          paddingTopLeft: [padX, padY],
-          paddingBottomRight: [padX, padY],
-          duration: 0.9,
-        });
+        const need = Math.log2(d / 256);
+        const target = Math.max(m.getZoom(), Math.ceil(need * 10) / 10);
+        m.flyTo(m.getCenter(), target, { duration: 0.8 });
       } else {
         m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
         m.options.maxBoundsViscosity = 0;
@@ -401,6 +400,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       setTimeout(() => m.invalidateSize({ animate: false }), 420);
     };
     bus.on("map.globe", onGlobe);
+
+
 
 
 
@@ -444,7 +445,16 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
   return (
     <>
+      {globe && <div className="geoos-globe-space" aria-hidden />}
       <div ref={el} className="fixed inset-0 z-0" aria-label="MapKernel" />
+      {globe && (
+        <div className="geoos-globe-fx" aria-hidden>
+          <div className="geoos-globe-atmo" />
+          <div className="geoos-globe-shade" />
+          <div className="geoos-globe-gloss" />
+          <div className="geoos-globe-terminator" />
+        </div>
+      )}
     </>
   );
 }
