@@ -13,6 +13,7 @@ export type Cyclone = {
   movementDir: number | null;
   movementSpeedKt: number | null;
   lastUpdate: string | null;
+  source?: string;
 };
 
 /** Ciclones tropicais ativos (NOAA NHC), via proxy interno. */

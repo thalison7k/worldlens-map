@@ -348,12 +348,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         if (tmLayer) { m.removeLayer(tmLayer); tmLayer = null; }
         return;
       }
+      // GIBS só publica o mosaico completo ~48h depois; datas muito recentes
+      // aparecem como "fatias" pretas (faixas de órbita ainda não preenchidas).
+      const maxDate = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+      const safeDate = date > maxDate ? maxDate : date;
       const url =
-        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${safeDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
       if (!tmLayer) {
         tmLayer = safeTileLayer(url, {
           maxNativeZoom: 9,
           opacity: 0.92,
+          noWrap: true,
+          bounds: L.latLngBounds([-85.05, -180], [85.05, 180]),
           attribution: "NASA GIBS · MODIS Terra",
         });
         tmLayer.addTo(m);
@@ -374,10 +380,22 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       c.classList.toggle("geoos-globe", on);
       if (on) {
         m.setMaxBounds(L.latLngBounds([-85, -180], [85, 180]));
+        m.options.maxBoundsViscosity = 1;
         m.setMinZoom(1);
-        m.flyTo([10, m.getCenter().lng], 2, { duration: 0.9 });
+        m.invalidateSize({ animate: false });
+        // encaixa o mundo dentro do recorte circular (84vmin de diâmetro)
+        const size = m.getSize();
+        const d = 0.84 * Math.min(window.innerWidth, window.innerHeight);
+        const padX = Math.max(0, (size.x - d) / 2);
+        const padY = Math.max(0, (size.y - d) / 2);
+        m.flyToBounds(L.latLngBounds([-70, -175], [75, 175]), {
+          paddingTopLeft: [padX, padY],
+          paddingBottomRight: [padX, padY],
+          duration: 0.9,
+        });
       } else {
         m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
+        m.options.maxBoundsViscosity = 0;
         m.setMinZoom(0);
       }
       setTimeout(() => m.invalidateSize({ animate: false }), 420);
