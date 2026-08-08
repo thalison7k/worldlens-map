@@ -348,12 +348,18 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         if (tmLayer) { m.removeLayer(tmLayer); tmLayer = null; }
         return;
       }
+      // GIBS só publica o mosaico completo ~48h depois; datas muito recentes
+      // aparecem como "fatias" pretas (faixas de órbita ainda não preenchidas).
+      const maxDate = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+      const safeDate = date > maxDate ? maxDate : date;
       const url =
-        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${safeDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
       if (!tmLayer) {
         tmLayer = safeTileLayer(url, {
           maxNativeZoom: 9,
           opacity: 0.92,
+          noWrap: true,
+          bounds: L.latLngBounds([-85.05, -180], [85.05, 180]),
           attribution: "NASA GIBS · MODIS Terra",
         });
         tmLayer.addTo(m);
