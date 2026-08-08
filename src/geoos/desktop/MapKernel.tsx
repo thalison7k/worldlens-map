@@ -48,6 +48,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
+  const [globe, setGlobe] = useState(false);
   
 
   // create map once
