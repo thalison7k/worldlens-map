@@ -515,7 +515,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
   },
   {
     id: "cyclones" as never,
-    label: "Ciclones tropicais (NOAA NHC)",
+    label: "Ciclones tropicais (NOAA NHC + GDACS)",
     icon: "🌀",
     category: "clima",
     order: 97,
@@ -556,7 +556,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               <b>Deslocamento:</b> ${bearingLabel(s.movementDir)}${s.movementSpeedKt != null ? ` a ${s.movementSpeedKt} kt` : ""}<br/>
               <b>Coords:</b> ${s.lat.toFixed(2)}, ${s.lng.toFixed(2)}<br/>
               <b>Atualizado:</b> ${s.lastUpdate ? new Date(s.lastUpdate).toLocaleString("pt-BR") : "n/d"}<br/>
-              <b>Fonte:</b> NOAA National Hurricane Center
+              <b>Fonte:</b> ${s.source ?? "NOAA National Hurricane Center"}
             </div>
           </div>`;
         eye.bindPopup(popup);
