@@ -93,16 +93,20 @@ URL de produção: <https://worldlens-map.lovable.app>
   Constrói/destrói camadas sob demanda a partir do bus, sem re-mount.
 - `Topbar.tsx` — busca global, seletor de tema, botão "Instalar app".
 
-### 3.3 Módulo de camadas (`src/geoos/apps/LayersApp.tsx`)
+### 3.3 Módulos (apps) — `src/geoos/apps/*`
 
-Único app funcional após a decisão de foco ambiental estrito:
+Todos são janelas flutuantes independentes, registradas em
+`registry.tsx` e abertas pelo Dock ou pelo ⌘K:
 
-- Toggle independente por camada (emite `map.toggleLayer`).
-- Painel KPI ao vivo (camadas ativas, pontos renderizados,
-  sismo máximo em 24h) alimentado por `map.layerBuilt`.
-- Card ENSO com fase e anomalia SST atual.
-- Atalho "último sismo" — clique dispara `map.flyTo`.
-- Auto-refresh a cada 5 minutos.
+| App | Função |
+| --- | --- |
+| **Alertas** | Ciclones tropicais, focos de calor, sismos e ar — risco em tempo real. |
+| **Dashboard** | Visão executiva com KPIs ambientais da área visível. |
+| **Camadas** | Toggle independente por camada, KPIs ao vivo, card ENSO, atalho "último sismo", auto-refresh configurável. |
+| **Analytics** | Gráficos (Recharts) da região visível. |
+| **Time Machine** | Reconstrói e anima o histórico ambiental; ativa o **modo globo 3D**. |
+| **Sensores IoT** | Telemetria do dispositivo (GPS, rede, bateria) publicada na nuvem. |
+| **Geo AI** | Assistente contextual (Lovable AI) que recebe bbox, zoom, camadas e dados carregados. |
 
 ### 3.4 Providers (`src/lib/gis/providers/*`)
 
@@ -114,7 +118,12 @@ Cada provider é uma função pura `() => Promise<T>` envolvida por
 | --- | --- | --- | --- |
 | `usgs.ts` | USGS GeoJSON summary feed | 5 min | CORS liberado, uso direto |
 | `openaq.ts` | OpenAQ v3 `/locations` | 10 min | via proxy `/api/public/openaq` |
-| `enso.ts` | NOAA CPC `detrend.nino34.ascii` | 60 min | via proxy `/api/public/enso` (parse ASCII) |
+| `enso.ts` | NOAA CPC / PSL (Niño 3.4) | 60 min | via proxy `/api/public/enso` |
+| `firms.ts` | NASA FIRMS / INPE (focos de calor) | 10 min | via proxy `/api/public/firms` |
+| `cyclones.ts` | NOAA NHC + GDACS/JTWC (global) | 15 min | via proxy `/api/public/cyclones` |
+| `openmeteo.ts` | Open-Meteo (clima e qualidade do ar) | 10 min | requisições agrupadas por lote |
+| `history.ts` | ERA5 / NASA GIBS (série histórica) | 60 min | base da Time Machine |
+
 
 ### 3.5 Camadas (`src/lib/gis/real-layers.ts`)
 
