@@ -75,6 +75,7 @@ export function Desktop() {
       <QuickLayersBar />
       <MapToolbar />
       <WindowLayer />
+      <MinimizedTray />
       <Dock />
       <ActivityCenter />
       <CommandPalette />
