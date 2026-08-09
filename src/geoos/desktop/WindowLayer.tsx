@@ -151,10 +151,22 @@ export function AppWindow({ state }: { state: WindowState }) {
             </Suspense>
           </AppErrorBoundary>
         </div>
+
+        {!isMax && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-0.5 right-0.5 h-4 w-4 opacity-40"
+            style={{
+              background:
+                "linear-gradient(135deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%, transparent 70%, currentColor 70%, currentColor 80%, transparent 80%)",
+            }}
+          />
+        )}
       </div>
     </Rnd>
   );
 }
+
 
 export function WindowLayer() {
   const windows = useGeoOS((s) => s.windows);
