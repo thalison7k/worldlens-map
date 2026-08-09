@@ -199,20 +199,44 @@ Sem chaves obrigatórias. Chave opcional:
 ```text
 src/
 ├── geoos/
-│   ├── core/          # bus, store, tema — o "kernel"
-│   ├── desktop/       # shell (MapKernel, Topbar, Desktop)
-│   └── apps/
-│       └── LayersApp.tsx   # único módulo funcional
-├── lib/gis/
-│   ├── cache.ts       # SWR + persistência
-│   ├── layer-defs.ts  # contratos LayerDef / BuiltLayer
-│   ├── real-layers.ts # camadas ambientais reais
-│   └── providers/     # USGS · OpenAQ · NOAA ENSO
+│   ├── core/          # bus, store, theme engine — o "kernel"
+│   ├── desktop/       # shell (MapKernel, Topbar, Dock, WindowLayer)
+│   └── apps/          # Alertas · Dashboard · Camadas · Analytics
+│                      # Time Machine · IoT · Geo AI
+├── lib/
+│   ├── gis/
+│   │   ├── cache.ts       # SWR + persistência
+│   │   ├── layer-defs.ts  # contratos LayerDef / BuiltLayer
+│   │   ├── real-layers.ts # camadas ambientais reais
+│   │   ├── tiles.ts       # safeTileLayer (maxNativeZoom)
+│   │   └── providers/     # USGS · OpenAQ · ENSO · FIRMS · Ciclones · Open-Meteo
+│   └── iot/           # sensores do dispositivo + publicação na nuvem
 └── routes/
     ├── __root.tsx     # head/metadata, providers
     ├── index.tsx      # entrypoint → Desktop
-    └── api/public/    # proxies CORS
+    └── api/           # chat (Geo AI) + public/ (proxies CORS)
 ```
+
+---
+
+## 7.1 Design system — GamaTec
+
+A identidade visual segue o padrão **GamaTec**: superfícies em vidro
+fosco, tipografia mono para dados, cantos suaves e acento único por
+tema. O Theme Engine (`src/geoos/core/theme.ts`) expõe **exatamente
+três variantes oficiais**, aplicadas por evento `theme.change` e
+persistidas em `localStorage`:
+
+| Variante | Modo | Base do mapa | Assinatura |
+| --- | --- | --- | --- |
+| **GamaTec Core** | dark | dark | grafite profundo · ciano técnico |
+| **GamaTec Pulse** | dark | satélite | preto tinta · lima neon |
+| **GamaTec Clear** | light | light | branco técnico · azul preciso |
+
+Nenhum componente importa o Theme Engine: eles apenas leem os tokens
+CSS (`--geoos-bg`, `--geoos-surface`, `--geoos-accent`…) escritos no
+`:root`.
+
 
 ---
 
