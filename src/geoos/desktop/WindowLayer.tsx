@@ -29,15 +29,20 @@ export function AppWindow({ state }: { state: WindowState }) {
       : { x: 8, y: 56, width: vw - 96, height: vh - 140 }
     : { x: state.x, y: state.y, width: state.width, height: state.height };
 
-  const touchHandle = { width: 16, height: 16 } as const;
+  const edge = isMobile ? 22 : 12;
+  const corner = isMobile ? 30 : 18;
+  const touchEdge = { width: edge, height: edge } as const;
+  const touchCorner = { width: corner, height: corner } as const;
 
   return (
     <Rnd
       ref={ref}
       size={{ width: geometry.width, height: geometry.height }}
       position={{ x: geometry.x, y: geometry.y }}
-      minWidth={280}
-      minHeight={200}
+      minWidth={isMobile ? 240 : 280}
+      minHeight={160}
+      maxWidth={vw}
+      maxHeight={vh}
       bounds="parent"
       dragHandleClassName="geoos-window-drag"
       cancel="button, input, textarea, select, a[href]"
@@ -52,15 +57,16 @@ export function AppWindow({ state }: { state: WindowState }) {
       disableDragging={isMax}
       enableResizing={!isMax}
       resizeHandleStyles={{
-        bottom: touchHandle,
-        bottomLeft: touchHandle,
-        bottomRight: touchHandle,
-        left: touchHandle,
-        right: touchHandle,
-        top: touchHandle,
-        topLeft: touchHandle,
-        topRight: touchHandle,
+        bottom: touchEdge,
+        bottomLeft: touchCorner,
+        bottomRight: touchCorner,
+        left: touchEdge,
+        right: touchEdge,
+        top: touchEdge,
+        topLeft: touchCorner,
+        topRight: touchCorner,
       }}
+    
     >
       <div
         data-geoos-obstacle
