@@ -5,6 +5,8 @@ export function Dock() {
   const openApp = useGeoOS((s) => s.openApp);
   const windows = useGeoOS((s) => s.windows);
   const focusApp = useGeoOS((s) => s.focusApp);
+  const minimizeApp = useGeoOS((s) => s.minimizeApp);
+  const activeAppId = useGeoOS((s) => s.activeAppId);
 
   const items = APPS.map((a) => APPS_BY_ID[a.id]).filter(Boolean);
 
