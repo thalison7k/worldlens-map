@@ -340,36 +340,14 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       }
     };
 
-    // ── Time Machine: imagem de satélite NASA GIBS da data escolhida ──
-    let tmLayer: L.TileLayer | null = null;
-    const onTimeMachine = ({ date }: { date: string | null }) => {
-      const m = mapRef.current;
-      if (!m) return;
-      if (!date) {
-        if (tmLayer) { m.removeLayer(tmLayer); tmLayer = null; }
-        return;
-      }
-      // GIBS só publica o mosaico completo ~48h depois; datas muito recentes
-      // aparecem como "fatias" pretas (faixas de órbita ainda não preenchidas).
-      const maxDate = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
-      const safeDate = date > maxDate ? maxDate : date;
-      const url =
-        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${safeDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
-      if (!tmLayer) {
-        tmLayer = safeTileLayer(url, {
-          maxNativeZoom: 9,
-          opacity: 0.92,
-          // wrap habilitado: evita "fatias" pretas nas bordas do globo
-          noWrap: false,
-          attribution: "NASA GIBS · MODIS Terra",
-        });
-        tmLayer.addTo(m);
-        tmLayer.bringToFront();
-      } else {
-        tmLayer.setUrl(url);
-      }
+    // ── Time Machine: o globo usa exclusivamente tiles OpenStreetMap.
+    // A camada de satélite NASA GIBS foi removida (mosaicos incompletos
+    // geravam "fatias" pretas sobre a esfera).
+    const onTimeMachine = (_p: { date: string | null }) => {
+      /* no-op: sem overlay de satélite */
     };
     bus.on("timemachine.date", onTimeMachine);
+
 
     // ── Modo globo: face esférica navegável (usada pela linha do tempo) ──
     let globeOn = false;
@@ -380,6 +358,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       const c = m.getContainer();
       c.classList.toggle("geoos-globe", on);
       setGlobe(on);
+      // A esfera usa somente OpenStreetMap (sem satélite).
+      if (on) setBase("street");
+
       if (on) {
         // Sem maxBounds: o globo gira livremente (tiles fazem wrap horizontal).
         m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
@@ -419,7 +400,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     return () => {
       bus.off("timemachine.date", onTimeMachine);
       bus.off("map.globe", onGlobe);
-      if (tmLayer && mapRef.current) mapRef.current.removeLayer(tmLayer);
+      
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
       bus.off("map.toggleLayer", onToggle);
