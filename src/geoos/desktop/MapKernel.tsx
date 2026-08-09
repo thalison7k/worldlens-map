@@ -358,6 +358,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       const c = m.getContainer();
       c.classList.toggle("geoos-globe", on);
       setGlobe(on);
+      // A esfera usa somente OpenStreetMap (sem satélite).
+      if (on) setBase("street");
+
       if (on) {
         // Sem maxBounds: o globo gira livremente (tiles fazem wrap horizontal).
         m.setMaxBounds(undefined as unknown as L.LatLngBoundsExpression);
@@ -397,7 +400,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     return () => {
       bus.off("timemachine.date", onTimeMachine);
       bus.off("map.globe", onGlobe);
-      if (tmLayer && mapRef.current) mapRef.current.removeLayer(tmLayer);
+      
       bus.off("map.flyTo", onFly);
       bus.off("map.setBase", onBase);
       bus.off("map.toggleLayer", onToggle);
