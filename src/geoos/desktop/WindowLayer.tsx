@@ -29,15 +29,20 @@ export function AppWindow({ state }: { state: WindowState }) {
       : { x: 8, y: 56, width: vw - 96, height: vh - 140 }
     : { x: state.x, y: state.y, width: state.width, height: state.height };
 
-  const touchHandle = { width: 16, height: 16 } as const;
+  const edge = isMobile ? 22 : 12;
+  const corner = isMobile ? 30 : 18;
+  const touchEdge = { width: edge, height: edge } as const;
+  const touchCorner = { width: corner, height: corner } as const;
 
   return (
     <Rnd
       ref={ref}
       size={{ width: geometry.width, height: geometry.height }}
       position={{ x: geometry.x, y: geometry.y }}
-      minWidth={280}
-      minHeight={200}
+      minWidth={isMobile ? 240 : 280}
+      minHeight={160}
+      maxWidth={vw}
+      maxHeight={vh}
       bounds="parent"
       dragHandleClassName="geoos-window-drag"
       cancel="button, input, textarea, select, a[href]"
@@ -52,19 +57,20 @@ export function AppWindow({ state }: { state: WindowState }) {
       disableDragging={isMax}
       enableResizing={!isMax}
       resizeHandleStyles={{
-        bottom: touchHandle,
-        bottomLeft: touchHandle,
-        bottomRight: touchHandle,
-        left: touchHandle,
-        right: touchHandle,
-        top: touchHandle,
-        topLeft: touchHandle,
-        topRight: touchHandle,
+        bottom: touchEdge,
+        bottomLeft: touchCorner,
+        bottomRight: touchCorner,
+        left: touchEdge,
+        right: touchEdge,
+        top: touchEdge,
+        topLeft: touchCorner,
+        topRight: touchCorner,
       }}
+    
     >
       <div
         data-geoos-obstacle
-        className="geoos-window flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-window)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+        className="geoos-window relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-window)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-xl"
       >
         <div
           className="geoos-window-drag flex h-11 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 select-none sm:h-9"
@@ -145,10 +151,22 @@ export function AppWindow({ state }: { state: WindowState }) {
             </Suspense>
           </AppErrorBoundary>
         </div>
+
+        {!isMax && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-0.5 right-0.5 h-4 w-4 opacity-40"
+            style={{
+              background:
+                "linear-gradient(135deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%, transparent 70%, currentColor 70%, currentColor 80%, transparent 80%)",
+            }}
+          />
+        )}
       </div>
     </Rnd>
   );
 }
+
 
 export function WindowLayer() {
   const windows = useGeoOS((s) => s.windows);

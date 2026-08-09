@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Dock } from "./Dock";
 import { WindowLayer } from "./WindowLayer";
+import { MinimizedTray } from "./MinimizedTray";
 import { CommandPalette } from "./CommandPalette";
 import { ActivityCenter } from "./ActivityCenter";
 import { MapToolbar } from "./MapToolbar";
@@ -74,6 +75,7 @@ export function Desktop() {
       <QuickLayersBar />
       <MapToolbar />
       <WindowLayer />
+      <MinimizedTray />
       <Dock />
       <ActivityCenter />
       <CommandPalette />
