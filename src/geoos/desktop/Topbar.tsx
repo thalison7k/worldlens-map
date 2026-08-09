@@ -76,7 +76,10 @@ export function Topbar() {
             <Palette className="h-4 w-4" />
           </button>
           {paletteOpen && (
-            <div className="absolute right-0 top-9 z-50 w-48 overflow-hidden rounded-lg border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1 shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 top-9 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+              <div className="px-2 pb-1.5 pt-1 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
+                GamaTec Themes
+              </div>
               {THEME_VARIANTS.map((v) => (
                 <button
                   key={v.id}
@@ -85,15 +88,24 @@ export function Topbar() {
                     setTheme(v.mode);
                     bus.emit("theme.change", { theme: v.mode, variant: v.id });
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-white/80 hover:bg-white/10"
+                  className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.08]"
                 >
-                  <span className="h-3 w-3 rounded-full" style={{ background: v.tokens.accent }} />
-                  <span>{v.label}</span>
-                  <span className="ml-auto text-[9px] uppercase tracking-widest text-white/40">{v.mode}</span>
+                  <span
+                    className="h-7 w-7 shrink-0 rounded-md border border-white/15 transition-transform group-hover:scale-105"
+                    style={{ background: `linear-gradient(135deg, ${v.tokens.accent}, ${v.tokens.accent2})` }}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-medium text-white/90">{v.label}</span>
+                    <span className="block truncate text-[10px] text-white/45">{v.hint}</span>
+                  </span>
+                  <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest text-white/40">
+                    {v.mode}
+                  </span>
                 </button>
               ))}
             </div>
           )}
+
         </div>
         <button
           onClick={() => setActivity(!activityOpen)}
