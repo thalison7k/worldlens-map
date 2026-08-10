@@ -181,3 +181,102 @@ export function tempColor(t: number): string {
   if (t >= 5) return "#38bdf8";
   return "#818cf8";
 }
+
+export type HourPoint = {
+  time: string;
+  temp: number;
+  precipProb: number;
+  precip: number;
+  wind: number;
+  humidity: number;
+  code: number;
+};
+
+export type DayPoint = {
+  date: string;
+  tMax: number;
+  tMin: number;
+  code: number;
+  precipProb: number;
+  precipSum: number;
+  windMax: number;
+  uvMax: number;
+  sunrise: string;
+  sunset: string;
+};
+
+export type ForecastBundle = {
+  lat: number;
+  lng: number;
+  hours: HourPoint[];
+  days: DayPoint[];
+};
+
+/** Previsão horária + 7 dias para um ponto (centro do mapa). Dados reais Open-Meteo. */
+export async function fetchForecast(lat: number, lng: number): Promise<ForecastBundle | null> {
+  const key = `openmeteo:fc:${lat.toFixed(2)},${lng.toFixed(2)}`;
+  try {
+    return await swr(key, 15 * 60_000, async () => {
+      const url =
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}` +
+        `&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,relative_humidity_2m,weather_code` +
+        `&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset` +
+        `&timezone=auto&forecast_days=7`;
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as {
+        hourly?: Record<string, unknown[]>;
+        daily?: Record<string, unknown[]>;
+      };
+      const h = j.hourly ?? {};
+      const d = j.daily ?? {};
+      const times = (h["time"] as string[]) ?? [];
+      const nowIdx = Math.max(
+        0,
+        times.findIndex((t) => new Date(t).getTime() >= Date.now() - 30 * 60_000),
+      );
+      const hours: HourPoint[] = times.slice(nowIdx, nowIdx + 24).map((t, i) => {
+        const k = nowIdx + i;
+        return {
+          time: t,
+          temp: Number((h["temperature_2m"] as number[])?.[k] ?? 0),
+          precipProb: Number((h["precipitation_probability"] as number[])?.[k] ?? 0),
+          precip: Number((h["precipitation"] as number[])?.[k] ?? 0),
+          wind: Number((h["wind_speed_10m"] as number[])?.[k] ?? 0),
+          humidity: Number((h["relative_humidity_2m"] as number[])?.[k] ?? 0),
+          code: Number((h["weather_code"] as number[])?.[k] ?? 0),
+        };
+      });
+      const dTimes = (d["time"] as string[]) ?? [];
+      const days: DayPoint[] = dTimes.map((t, i) => ({
+        date: t,
+        tMax: Number((d["temperature_2m_max"] as number[])?.[i] ?? 0),
+        tMin: Number((d["temperature_2m_min"] as number[])?.[i] ?? 0),
+        code: Number((d["weather_code"] as number[])?.[i] ?? 0),
+        precipProb: Number((d["precipitation_probability_max"] as number[])?.[i] ?? 0),
+        precipSum: Number((d["precipitation_sum"] as number[])?.[i] ?? 0),
+        windMax: Number((d["wind_speed_10m_max"] as number[])?.[i] ?? 0),
+        uvMax: Number((d["uv_index_max"] as number[])?.[i] ?? 0),
+        sunrise: String((d["sunrise"] as string[])?.[i] ?? ""),
+        sunset: String((d["sunset"] as string[])?.[i] ?? ""),
+      }));
+      return { lat, lng, hours, days };
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Rótulo WMO em pt-BR. */
+export function weatherLabel(code: number): string {
+  if (code === 0) return "Céu limpo";
+  if (code <= 2) return "Parcialmente nublado";
+  if (code === 3) return "Nublado";
+  if (code <= 48) return "Névoa";
+  if (code <= 57) return "Garoa";
+  if (code <= 67) return "Chuva";
+  if (code <= 77) return "Neve";
+  if (code <= 82) return "Pancadas de chuva";
+  if (code <= 86) return "Pancadas de neve";
+  return "Tempestade";
+}
