@@ -59,12 +59,14 @@ export default function AlertsApp() {
 
   const load = useCallback(async (box: BBox) => {
     setLoading(true);
-    const [cyclones, fires, quakes, air] = await Promise.all([
+    const [cyclones, fires, quakes, air, floods] = await Promise.all([
       fetchCyclones().catch(() => []),
       fetchFires(box, 1).catch(() => []),
       fetchEarthquakes("day").catch(() => []),
       fetchAirStations(box, 120).catch(() => []),
+      fetchFloodRisk(box, 4).catch(() => []),
     ]);
+
     const out: Alert[] = [];
 
     for (const s of cyclones) {
