@@ -59,7 +59,7 @@ type Snapshot = {
 const EMPTY: Snapshot = {
   quakes: 0, maxMag: 0, fires: 0, frp: 0, aqi: 0, pm10: 0, temp: 0, feels: 0,
   wind: 0, gust: 0, humidity: 0, pressure: 0, uv: 0, visibility: 0, cloud: 0,
-  precip: 0, code: 0, city: "—",
+  precip: 0, code: 0, city: "—", flood: 0, floodCells: 0,
 };
 
 /**
