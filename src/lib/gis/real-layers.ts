@@ -7,6 +7,8 @@ import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
 import { fetchCyclones, cycloneCategory, bearingLabel } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
+import { fetchFloodRisk, FLOOD_LEVEL_COLOR, FLOOD_LEVEL_LABEL } from "./providers/floods";
+
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
 function asyncGroup(
@@ -574,10 +576,98 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       };
     }),
   },
+  {
+
+    id: "flood_risk" as never,
+    label: "Áreas alagáveis / enchentes (GloFAS + chuva)",
+    icon: "🌊",
+    category: "clima",
+    order: 41,
+    defaultVisible: true,
+    defaultOpacity: 0.75,
+    legend: [
+      { color: FLOOD_LEVEL_COLOR.extremo, label: "Extremo (≥ 75)" },
+      { color: FLOOD_LEVEL_COLOR.alto, label: "Alto (55–74)" },
+      { color: FLOOD_LEVEL_COLOR.moderado, label: "Moderado (32–54)" },
+      { color: FLOOD_LEVEL_COLOR.baixo, label: "Baixo (< 32)" },
+    ],
+    build: (ctx) => {
+      const group = L.layerGroup().addTo(ctx.map);
+      const circles: Array<{ c: L.Circle; base: number; risk: number }> = [];
+      let disposed = false;
+      let opacity = 0.75;
+      let phase = 0;
+
+      const ready = (async () => {
+        const cells = await fetchFloodRisk(ctx.bbox, 4);
+        if (disposed) return { count: 0 };
+        const risky = cells.filter((c) => c.risk >= 25);
+        const [w, s, e, n] = ctx.bbox;
+        const cellKm =
+          (Math.max(Math.abs(e - w), Math.abs(n - s)) / 5) * 111_000;
+        for (const f of risky) {
+          const color = FLOOD_LEVEL_COLOR[f.level];
+          const base = Math.max(6_000, Math.min(90_000, cellKm * 0.45));
+          const circle = L.circle([f.lat, f.lng], {
+            radius: base,
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.22 * opacity,
+            opacity,
+            className: "geoos-flood-zone",
+          }).bindPopup(
+            `<div style="min-width:250px">
+              <div style="font-weight:700;font-size:14px;color:${color}">🌊 Risco de alagamento · ${f.risk}/100</div>
+              <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+                <b>Classificação:</b> ${FLOOD_LEVEL_LABEL[f.level]}<br/>
+                <b>Chuva prevista 24 h:</b> ${f.rain24.toFixed(1)} mm<br/>
+                <b>Chuva prevista 72 h:</b> ${f.rain72.toFixed(1)} mm<br/>
+                <b>Pico horário:</b> ${f.rainPeak.toFixed(1)} mm/h<br/>
+                <b>Vazão do rio:</b> ${f.discharge != null ? `${f.discharge.toFixed(1)} m³/s` : "n/d"}${
+                  f.dischargeRatio != null ? ` (${(f.dischargeRatio * 100).toFixed(0)}% da média)` : ""
+                }<br/>
+                <b>Altitude do terreno:</b> ${f.elevation != null ? `${f.elevation.toFixed(0)} m` : "n/d"}<br/>
+                <b>Coords:</b> ${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}<br/>
+                <b>Fonte:</b> Open-Meteo Flood (GloFAS v4) + previsão de chuva + Copernicus DEM
+              </div>
+            </div>`,
+          );
+          circle.addTo(group);
+          circles.push({ c: circle, base, risk: f.risk });
+        }
+        return { count: circles.length };
+      })().catch(() => ({ count: 0 }));
+
+      return {
+        layer: group,
+        meta: { count: 0 },
+        ready,
+        /** Animação 2D: pulso de "água subindo" proporcional ao risco. */
+        tick: (dt: number) => {
+          if (!circles.length) return;
+          phase += dt / 1000;
+          for (let i = 0; i < circles.length; i++) {
+            const { c, base, risk } = circles[i]!;
+            const speed = 0.9 + (risk / 100) * 1.4;
+            const k = Math.sin(phase * speed + i * 0.7);
+            c.setRadius(base * (1 + k * 0.16));
+            c.setStyle({ fillOpacity: (0.14 + (k + 1) * 0.07) * opacity });
+          }
+        },
+        setOpacity: (o) => {
+          opacity = o;
+          circles.forEach(({ c }) => c.setStyle({ opacity: o, fillOpacity: 0.22 * o }));
+        },
+        dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
+      };
+    },
+  },
 ];
 
 /** Layer ids that need to rebuild whenever the map bbox changes. */
-export const BBOX_DRIVEN_LAYERS = new Set(["air_quality", "weather", "fires", "rain_radar"]);
+export const BBOX_DRIVEN_LAYERS = new Set(["air_quality", "weather", "fires", "rain_radar", "flood_risk"]);
+
 
 /** Layers that manage their own realtime refresh. */
 export const SELF_REFRESHING_LAYERS = new Set<string>();

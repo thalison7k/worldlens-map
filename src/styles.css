@@ -241,6 +241,20 @@
   transition: none;
 }
 
+/* Áreas alagáveis: onda de água subindo (contorno em movimento) */
+.geoos-flood-zone {
+  stroke-dasharray: 8 6;
+  animation: geoos-flood-flow 2.4s linear infinite;
+  will-change: stroke-dashoffset;
+}
+@keyframes geoos-flood-flow {
+  to { stroke-dashoffset: -28; }
+}
+.leaflet-container.geoos-interacting .geoos-flood-zone {
+  animation: none;
+}
+
+
 /* ===== Ícone 3D animado do GeoOS (BrandGlobe / favicon) ===== */
 @keyframes geoos-bob {
   0%, 100% { transform: translateY(0) rotate(0deg); }

@@ -30,6 +30,8 @@ import {
 } from "@/lib/gis/providers/openmeteo";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
 import { fetchFires } from "@/lib/gis/providers/firms";
+import { fetchFloodRisk } from "@/lib/gis/providers/floods";
+
 import type { BBox } from "@/lib/gis/simulated";
 
 type Snapshot = {
@@ -51,12 +53,15 @@ type Snapshot = {
   precip: number;
   code: number;
   city: string;
+  flood: number;
+  floodCells: number;
+
 };
 
 const EMPTY: Snapshot = {
   quakes: 0, maxMag: 0, fires: 0, frp: 0, aqi: 0, pm10: 0, temp: 0, feels: 0,
   wind: 0, gust: 0, humidity: 0, pressure: 0, uv: 0, visibility: 0, cloud: 0,
-  precip: 0, code: 0, city: "—",
+  precip: 0, code: 0, city: "—", flood: 0, floodCells: 0,
 };
 
 /**
@@ -88,13 +93,15 @@ export default function DashboardApp() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const [quakes, weather, air, fires, forecast] = await Promise.all([
+      const [quakes, weather, air, fires, forecast, floods] = await Promise.all([
         fetchEarthquakes("day"),
         fetchWeather(bbox, 24),
         fetchAirStations(bbox, 100),
         fetchFires(bbox, 1),
         fetchForecast(center.lat, center.lng),
+        fetchFloodRisk(bbox, 3).catch(() => []),
       ]);
+
       const nearest = [...weather].sort(
         (a, b) => dist(a, center) - dist(b, center),
       )[0];
@@ -117,6 +124,9 @@ export default function DashboardApp() {
         precip: nearest?.precipitation ?? 0,
         code: nearest?.code ?? 0,
         city: nearest?.city ?? "Área visível",
+        flood: floods.reduce((m, f) => Math.max(m, f.risk), 0),
+        floodCells: floods.filter((f) => f.risk >= 55).length,
+
       });
       setFc(forecast);
       setUpdatedAt(Date.now());
@@ -135,7 +145,9 @@ export default function DashboardApp() {
   const activeLayers = Object.values(layers).filter((n) => n > 0).length;
   const totalPts = Object.values(layers).reduce((s, n) => s + n, 0);
   const alerts =
-    (snap.maxMag >= 5 ? 1 : 0) + (snap.fires > 20 ? 1 : 0) + (snap.aqi > 55 ? 1 : 0);
+    (snap.maxMag >= 5 ? 1 : 0) + (snap.fires > 20 ? 1 : 0) + (snap.aqi > 55 ? 1 : 0) +
+    (snap.flood >= 55 ? 1 : 0);
+
 
   const today = fc?.days?.[0];
   const hours = fc?.hours ?? [];
@@ -143,6 +155,8 @@ export default function DashboardApp() {
   const tMaxH = Math.max(...hours.map((h) => h.temp), 1);
 
   const envCards = [
+    { label: "Risco de enchente", value: snap.flood ? `${snap.flood}/100` : "—", sub: `${snap.floodCells} área(s) crítica(s) · GloFAS`, icon: CloudRain, tone: snap.flood >= 55 ? "warn" : "ok" },
+
     { label: "Focos de incêndio", value: snap.fires.toLocaleString("pt-BR"), sub: `FRP ${snap.frp.toFixed(0)} MW · NASA FIRMS`, icon: Flame, tone: snap.fires > 20 ? "warn" : "ok" },
     { label: "Terremotos 24h", value: snap.quakes.toLocaleString("pt-BR"), sub: `Máx M ${snap.maxMag.toFixed(1)} · USGS`, icon: Activity, tone: snap.maxMag >= 5 ? "warn" : "ok" },
     { label: "PM2.5 médio", value: snap.aqi ? snap.aqi.toFixed(1) : "—", sub: `PM10 ${snap.pm10 ? snap.pm10.toFixed(1) : "—"} · CAMS`, icon: Cloud, tone: snap.aqi > 35 ? "warn" : "ok" },

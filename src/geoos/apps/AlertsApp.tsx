@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Bell, BellOff, RefreshCw, Wind } from "lucide-react";
+import { AlertTriangle, Bell, BellOff, History, RefreshCw, Wind } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
@@ -7,13 +7,14 @@ import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
 import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/providers/cyclones";
+import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
 import type { BBox } from "@/lib/gis/simulated";
 
 type Level = "critico" | "alto" | "moderado";
 
 type Alert = {
   id: string;
-  kind: "ciclone" | "queimada" | "sismo" | "ar";
+  kind: "ciclone" | "queimada" | "sismo" | "ar" | "enchente";
   level: Level;
   title: string;
   detail: string;
@@ -29,10 +30,11 @@ const LEVEL_STYLE: Record<Level, { color: string; label: string }> = {
 };
 
 const KIND_ICON: Record<Alert["kind"], string> = {
-  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️",
+  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
 };
 
 const REFRESH_MS = 180_000;
+
 
 function inside(b: BBox, lat: number, lng: number) {
   return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
@@ -57,12 +59,14 @@ export default function AlertsApp() {
 
   const load = useCallback(async (box: BBox) => {
     setLoading(true);
-    const [cyclones, fires, quakes, air] = await Promise.all([
+    const [cyclones, fires, quakes, air, floods] = await Promise.all([
       fetchCyclones().catch(() => []),
       fetchFires(box, 1).catch(() => []),
       fetchEarthquakes("day").catch(() => []),
       fetchAirStations(box, 120).catch(() => []),
+      fetchFloodRisk(box, 4).catch(() => []),
     ]);
+
     const out: Alert[] = [];
 
     for (const s of cyclones) {
@@ -114,6 +118,22 @@ export default function AlertsApp() {
         when: a.updated || Date.now(),
       });
     }
+
+    for (const f of floods.filter((f) => f.risk >= 32).slice(0, 12)) {
+      out.push({
+        id: f.id,
+        kind: "enchente",
+        level: f.risk >= 75 ? "critico" : f.risk >= 55 ? "alto" : "moderado",
+        title: `Risco de alagamento ${f.risk}/100`,
+        detail: `${FLOOD_LEVEL_LABEL[f.level]} · chuva 72 h ${f.rain72.toFixed(0)} mm${
+          f.dischargeRatio != null ? ` · rio a ${(f.dischargeRatio * 100).toFixed(0)}% da média` : ""
+        }`,
+        lat: f.lat, lng: f.lng,
+        when: f.updated,
+      });
+    }
+
+
 
     const order: Record<Level, number> = { critico: 0, alto: 1, moderado: 2 };
     out.sort((x, y) => order[x.level] - order[y.level] || y.when - x.when);
@@ -198,31 +218,47 @@ export default function AlertsApp() {
           </div>
         )}
         {alerts.map((a) => (
-          <button
+          <div
             key={a.id}
-            type="button"
-            onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 })}
-            className="group flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-left transition-all hover:border-white/25 hover:bg-white/[0.07] active:scale-[0.99]"
+            className="group flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 transition-all hover:border-white/25 hover:bg-white/[0.07]"
           >
-            <span className="mt-0.5 text-base leading-none">{KIND_ICON[a.kind]}</span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: LEVEL_STYLE[a.level].color, boxShadow: `0 0 8px ${LEVEL_STYLE[a.level].color}` }}
-                />
-                <span className="truncate text-[12px] font-medium text-white/90">{a.title}</span>
+            <button
+              type="button"
+              onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 })}
+              className="flex min-w-0 flex-1 items-start gap-2 text-left active:scale-[0.99]"
+            >
+              <span className="mt-0.5 text-base leading-none">{KIND_ICON[a.kind]}</span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: LEVEL_STYLE[a.level].color, boxShadow: `0 0 8px ${LEVEL_STYLE[a.level].color}` }}
+                  />
+                  <span className="truncate text-[12px] font-medium text-white/90">{a.title}</span>
+                </span>
+                <span className="mt-0.5 block truncate text-[10px] text-white/50">{a.detail}</span>
               </span>
-              <span className="mt-0.5 block truncate text-[10px] text-white/50">{a.detail}</span>
-            </span>
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" style={{ color: LEVEL_STYLE[a.level].color }} />
-          </button>
+            </button>
+            <button
+              type="button"
+              title="Ver histórico neste local"
+              onClick={() => {
+                bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 });
+                bus.emit("app.open", { appId: "timemachine", payload: { lat: a.lat, lng: a.lng } });
+              }}
+              className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-white/50 transition-all hover:bg-white/10 hover:text-white active:scale-90"
+            >
+              <History className="h-3.5 w-3.5" />
+            </button>
+            <AlertTriangle className="mt-1.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" style={{ color: LEVEL_STYLE[a.level].color }} />
+          </div>
         ))}
+
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-[10px] leading-relaxed text-white/45">
         <Wind className="mr-1 inline h-3 w-3" />
-        Fontes: NOAA National Hurricane Center (ciclones) · NASA/INPE (focos de calor) · USGS (sismos) · Open-Meteo Air Quality.
+        Fontes: Open-Meteo Flood/GloFAS (enchentes) · NOAA National Hurricane Center (ciclones) · NASA/INPE (focos de calor) · USGS (sismos) · Open-Meteo Air Quality.
       </div>
     </div>
   );

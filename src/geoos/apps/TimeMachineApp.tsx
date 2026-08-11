@@ -115,6 +115,18 @@ export default function TimeMachineApp() {
   const pm = pmLevel(current?.pm25 ?? null);
   const anomaly = current?.tmax != null && stats.tAvg != null ? current.tmax - stats.tAvg : null;
 
+  /** Chuva acumulada em 72 h até a data selecionada — proxy de risco de enchente. */
+  const rain72 = useMemo(
+    () => rows.slice(Math.max(0, i - 2), i + 1).reduce((s, r) => s + (r.precip ?? 0), 0),
+    [rows, i],
+  );
+  const floodRisk =
+    rain72 >= 150 ? { label: "Extremo", color: "#7c2d12" }
+    : rain72 >= 90 ? { label: "Alto", color: "#dc2626" }
+    : rain72 >= 45 ? { label: "Moderado", color: "#f59e0b" }
+    : { label: "Baixo", color: "#38bdf8" };
+
+
   return (
     <div className="flex h-full flex-col gap-2 overflow-y-auto p-2 text-white/85">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
@@ -194,6 +206,12 @@ export default function TimeMachineApp() {
           <Kpi label="Chuva" value={current?.precip != null ? `${current.precip.toFixed(1)} mm` : "—"} color="#38bdf8" />
           <Kpi label={`PM2.5 · ${pm.label}`} value={current?.pm25 != null ? current.pm25.toFixed(0) : "—"} color={pm.color} />
         </div>
+        <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[10px] text-white/55">
+          <span className="mr-1">🌊</span>
+          Enchente · chuva 72 h {rain72.toFixed(0)} mm ·{" "}
+          <span style={{ color: floodRisk.color }}>{floodRisk.label}</span>
+        </div>
+
       </div>
 
       <input
