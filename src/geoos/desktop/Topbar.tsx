@@ -5,6 +5,7 @@ import { WORKSPACES } from "@/geoos/core/workspaces";
 import { THEME_VARIANTS } from "@/geoos/core/theme";
 import { bus } from "@/geoos/core/bus";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { GamaTecBadge } from "./GamaTecBadge";
 
 export function Topbar() {
   const workspaceId = useGeoOS((s) => s.workspaceId);
