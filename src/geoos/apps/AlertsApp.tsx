@@ -119,6 +119,22 @@ export default function AlertsApp() {
       });
     }
 
+    for (const f of floods.filter((f) => f.risk >= 32).slice(0, 12)) {
+      out.push({
+        id: f.id,
+        kind: "enchente",
+        level: f.risk >= 75 ? "critico" : f.risk >= 55 ? "alto" : "moderado",
+        title: `Risco de alagamento ${f.risk}/100`,
+        detail: `${FLOOD_LEVEL_LABEL[f.level]} · chuva 72 h ${f.rain72.toFixed(0)} mm${
+          f.dischargeRatio != null ? ` · rio a ${(f.dischargeRatio * 100).toFixed(0)}% da média` : ""
+        }`,
+        lat: f.lat, lng: f.lng,
+        when: f.updated,
+      });
+    }
+
+
+
     const order: Record<Level, number> = { critico: 0, alto: 1, moderado: 2 };
     out.sort((x, y) => order[x.level] - order[y.level] || y.when - x.when);
     setAlerts(out);
