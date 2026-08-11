@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Bell, BellOff, RefreshCw, Wind } from "lucide-react";
+import { AlertTriangle, Bell, BellOff, History, RefreshCw, Wind } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
@@ -7,13 +7,14 @@ import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
 import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/providers/cyclones";
+import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
 import type { BBox } from "@/lib/gis/simulated";
 
 type Level = "critico" | "alto" | "moderado";
 
 type Alert = {
   id: string;
-  kind: "ciclone" | "queimada" | "sismo" | "ar";
+  kind: "ciclone" | "queimada" | "sismo" | "ar" | "enchente";
   level: Level;
   title: string;
   detail: string;
@@ -29,10 +30,11 @@ const LEVEL_STYLE: Record<Level, { color: string; label: string }> = {
 };
 
 const KIND_ICON: Record<Alert["kind"], string> = {
-  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️",
+  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
 };
 
 const REFRESH_MS = 180_000;
+
 
 function inside(b: BBox, lat: number, lng: number) {
   return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
