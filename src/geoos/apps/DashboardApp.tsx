@@ -155,6 +155,8 @@ export default function DashboardApp() {
   const tMaxH = Math.max(...hours.map((h) => h.temp), 1);
 
   const envCards = [
+    { label: "Risco de enchente", value: snap.flood ? `${snap.flood}/100` : "—", sub: `${snap.floodCells} área(s) crítica(s) · GloFAS`, icon: CloudRain, tone: snap.flood >= 55 ? "warn" : "ok" },
+
     { label: "Focos de incêndio", value: snap.fires.toLocaleString("pt-BR"), sub: `FRP ${snap.frp.toFixed(0)} MW · NASA FIRMS`, icon: Flame, tone: snap.fires > 20 ? "warn" : "ok" },
     { label: "Terremotos 24h", value: snap.quakes.toLocaleString("pt-BR"), sub: `Máx M ${snap.maxMag.toFixed(1)} · USGS`, icon: Activity, tone: snap.maxMag >= 5 ? "warn" : "ok" },
     { label: "PM2.5 médio", value: snap.aqi ? snap.aqi.toFixed(1) : "—", sub: `PM10 ${snap.pm10 ? snap.pm10.toFixed(1) : "—"} · CAMS`, icon: Cloud, tone: snap.aqi > 35 ? "warn" : "ok" },
