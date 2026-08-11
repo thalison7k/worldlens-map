@@ -34,6 +34,7 @@ export function Topbar() {
         <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-white/60">
           GeoOS · Ambiental
         </span>
+        <GamaTecBadge className="sm:hidden" />
         <span className="hidden text-white/40 sm:inline">/</span>
         <span className="hidden rounded-md px-2 py-1 text-white/80 sm:inline" style={{ background: `hsl(${ws?.accent} / 0.15)`, color: `hsl(${ws?.accent})` }}>
           {ws?.name}
