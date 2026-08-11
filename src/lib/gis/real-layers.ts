@@ -7,6 +7,8 @@ import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
 import { fetchCyclones, cycloneCategory, bearingLabel } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
+import { fetchFloodRisk, FLOOD_LEVEL_COLOR, FLOOD_LEVEL_LABEL } from "./providers/floods";
+
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
 function asyncGroup(
