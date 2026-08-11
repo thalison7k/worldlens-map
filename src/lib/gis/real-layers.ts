@@ -574,6 +574,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       };
     }),
   },
+  {
 
     id: "flood_risk" as never,
     label: "Áreas alagáveis / enchentes (GloFAS + chuva)",
