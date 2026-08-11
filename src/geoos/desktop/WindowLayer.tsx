@@ -23,11 +23,18 @@ export function AppWindow({ state }: { state: WindowState }) {
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   const isMobile = vw < 640;
   const isMax = state.maximized;
+  const clampedW = Math.min(state.width, vw - 16);
+  const clampedH = Math.min(state.height, vh - 100);
   const geometry = isMax
     ? isMobile
       ? { x: 0, y: 44, width: vw, height: vh - 44 - 76 }
       : { x: 8, y: 56, width: vw - 96, height: vh - 140 }
-    : { x: state.x, y: state.y, width: state.width, height: state.height };
+    : {
+        x: Math.min(Math.max(state.x, 0), Math.max(0, vw - clampedW)),
+        y: Math.min(Math.max(state.y, 0), Math.max(0, vh - 80)),
+        width: clampedW,
+        height: clampedH,
+      };
 
   const edge = isMobile ? 22 : 12;
   const corner = isMobile ? 30 : 18;
@@ -48,13 +55,19 @@ export function AppWindow({ state }: { state: WindowState }) {
       cancel="button, input, textarea, select, a[href]"
       className="pointer-events-auto"
       style={{ zIndex: state.z, pointerEvents: "auto" }}
-      onDragStop={(_, d) => !isMax && moveApp(state.appId, d.x, d.y)}
+      onDragStop={(_, d) => {
+        if (isMax) {
+          maximizeApp(state.appId);
+          moveApp(state.appId, Math.max(0, d.x), Math.max(0, d.y));
+        } else {
+          moveApp(state.appId, d.x, d.y);
+        }
+      }}
       onResizeStop={(_, __, refEl, ___, pos) => {
         resizeApp(state.appId, refEl.offsetWidth, refEl.offsetHeight);
         moveApp(state.appId, pos.x, pos.y);
       }}
       onPointerDown={() => focusApp(state.appId)}
-      disableDragging={isMax}
       enableResizing={!isMax}
       resizeHandleStyles={{
         bottom: touchEdge,
@@ -73,42 +86,10 @@ export function AppWindow({ state }: { state: WindowState }) {
         className="geoos-window relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-window)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-xl"
       >
         <div
-          className="geoos-window-drag flex h-11 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 select-none sm:h-9"
+          className="geoos-window-drag flex h-11 cursor-move items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 select-none sm:h-9"
           onDoubleClick={() => maximizeApp(state.appId)}
         >
-          <div className="hidden items-center gap-1.5 sm:flex">
-            <button
-              type="button"
-              onPointerDown={stopDrag}
-              onClick={(e) => { e.stopPropagation(); closeApp(state.appId); }}
-              className="geoos-dot grid h-3.5 w-3.5 place-items-center rounded-full bg-red-500 text-black/80 hover:bg-red-400"
-              aria-label="Fechar"
-              title="Fechar"
-            >
-              <X className="h-2.5 w-2.5" strokeWidth={3} />
-            </button>
-            <button
-              type="button"
-              onPointerDown={stopDrag}
-              onClick={(e) => { e.stopPropagation(); minimizeApp(state.appId); }}
-              className="geoos-dot grid h-3.5 w-3.5 place-items-center rounded-full bg-yellow-500 text-black/80 hover:bg-yellow-400"
-              aria-label="Minimizar"
-              title="Minimizar"
-            >
-              <Minus className="h-2.5 w-2.5" strokeWidth={3} />
-            </button>
-            <button
-              type="button"
-              onPointerDown={stopDrag}
-              onClick={(e) => { e.stopPropagation(); maximizeApp(state.appId); }}
-              className="geoos-dot grid h-3.5 w-3.5 place-items-center rounded-full bg-emerald-500 text-black/80 hover:bg-emerald-400"
-              aria-label="Maximizar"
-              title="Maximizar"
-            >
-              <Square className="h-2 w-2" strokeWidth={3} />
-            </button>
-          </div>
-          <div className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-white/70 sm:ml-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-white/70">
             <app.icon className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{app.name}</span>
           </div>
