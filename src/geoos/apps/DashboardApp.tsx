@@ -91,13 +91,15 @@ export default function DashboardApp() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const [quakes, weather, air, fires, forecast] = await Promise.all([
+      const [quakes, weather, air, fires, forecast, floods] = await Promise.all([
         fetchEarthquakes("day"),
         fetchWeather(bbox, 24),
         fetchAirStations(bbox, 100),
         fetchFires(bbox, 1),
         fetchForecast(center.lat, center.lng),
+        fetchFloodRisk(bbox, 3).catch(() => []),
       ]);
+
       const nearest = [...weather].sort(
         (a, b) => dist(a, center) - dist(b, center),
       )[0];
