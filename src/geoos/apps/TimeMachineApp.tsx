@@ -115,6 +115,18 @@ export default function TimeMachineApp() {
   const pm = pmLevel(current?.pm25 ?? null);
   const anomaly = current?.tmax != null && stats.tAvg != null ? current.tmax - stats.tAvg : null;
 
+  /** Chuva acumulada em 72 h até a data selecionada — proxy de risco de enchente. */
+  const rain72 = useMemo(
+    () => rows.slice(Math.max(0, i - 2), i + 1).reduce((s, r) => s + (r.precip ?? 0), 0),
+    [rows, i],
+  );
+  const floodRisk =
+    rain72 >= 150 ? { label: "Extremo", color: "#7c2d12" }
+    : rain72 >= 90 ? { label: "Alto", color: "#dc2626" }
+    : rain72 >= 45 ? { label: "Moderado", color: "#f59e0b" }
+    : { label: "Baixo", color: "#38bdf8" };
+
+
   return (
     <div className="flex h-full flex-col gap-2 overflow-y-auto p-2 text-white/85">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
