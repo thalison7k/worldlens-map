@@ -124,6 +124,9 @@ export default function DashboardApp() {
         precip: nearest?.precipitation ?? 0,
         code: nearest?.code ?? 0,
         city: nearest?.city ?? "Área visível",
+        flood: floods.reduce((m, f) => Math.max(m, f.risk), 0),
+        floodCells: floods.filter((f) => f.risk >= 55).length,
+
       });
       setFc(forecast);
       setUpdatedAt(Date.now());
