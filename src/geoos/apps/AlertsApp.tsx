@@ -218,26 +218,42 @@ export default function AlertsApp() {
           </div>
         )}
         {alerts.map((a) => (
-          <button
+          <div
             key={a.id}
-            type="button"
-            onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 })}
-            className="group flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-left transition-all hover:border-white/25 hover:bg-white/[0.07] active:scale-[0.99]"
+            className="group flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2 transition-all hover:border-white/25 hover:bg-white/[0.07]"
           >
-            <span className="mt-0.5 text-base leading-none">{KIND_ICON[a.kind]}</span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ background: LEVEL_STYLE[a.level].color, boxShadow: `0 0 8px ${LEVEL_STYLE[a.level].color}` }}
-                />
-                <span className="truncate text-[12px] font-medium text-white/90">{a.title}</span>
+            <button
+              type="button"
+              onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 })}
+              className="flex min-w-0 flex-1 items-start gap-2 text-left active:scale-[0.99]"
+            >
+              <span className="mt-0.5 text-base leading-none">{KIND_ICON[a.kind]}</span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: LEVEL_STYLE[a.level].color, boxShadow: `0 0 8px ${LEVEL_STYLE[a.level].color}` }}
+                  />
+                  <span className="truncate text-[12px] font-medium text-white/90">{a.title}</span>
+                </span>
+                <span className="mt-0.5 block truncate text-[10px] text-white/50">{a.detail}</span>
               </span>
-              <span className="mt-0.5 block truncate text-[10px] text-white/50">{a.detail}</span>
-            </span>
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" style={{ color: LEVEL_STYLE[a.level].color }} />
-          </button>
+            </button>
+            <button
+              type="button"
+              title="Ver histórico neste local"
+              onClick={() => {
+                bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: a.kind === "ciclone" ? 5 : 9 });
+                bus.emit("app.open", { appId: "timemachine", payload: { lat: a.lat, lng: a.lng } });
+              }}
+              className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-white/50 transition-all hover:bg-white/10 hover:text-white active:scale-90"
+            >
+              <History className="h-3.5 w-3.5" />
+            </button>
+            <AlertTriangle className="mt-1.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-70" style={{ color: LEVEL_STYLE[a.level].color }} />
+          </div>
         ))}
+
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-[10px] leading-relaxed text-white/45">
