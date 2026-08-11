@@ -258,7 +258,7 @@ export default function AlertsApp() {
 
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-[10px] leading-relaxed text-white/45">
         <Wind className="mr-1 inline h-3 w-3" />
-        Fontes: NOAA National Hurricane Center (ciclones) · NASA/INPE (focos de calor) · USGS (sismos) · Open-Meteo Air Quality.
+        Fontes: Open-Meteo Flood/GloFAS (enchentes) · NOAA National Hurricane Center (ciclones) · NASA/INPE (focos de calor) · USGS (sismos) · Open-Meteo Air Quality.
       </div>
     </div>
   );
