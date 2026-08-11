@@ -206,6 +206,12 @@ export default function TimeMachineApp() {
           <Kpi label="Chuva" value={current?.precip != null ? `${current.precip.toFixed(1)} mm` : "—"} color="#38bdf8" />
           <Kpi label={`PM2.5 · ${pm.label}`} value={current?.pm25 != null ? current.pm25.toFixed(0) : "—"} color={pm.color} />
         </div>
+        <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[10px] text-white/55">
+          <span className="mr-1">🌊</span>
+          Enchente · chuva 72 h {rain72.toFixed(0)} mm ·{" "}
+          <span style={{ color: floodRisk.color }}>{floodRisk.label}</span>
+        </div>
+
       </div>
 
       <input
