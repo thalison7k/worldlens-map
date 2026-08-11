@@ -30,6 +30,8 @@ import {
 } from "@/lib/gis/providers/openmeteo";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
 import { fetchFires } from "@/lib/gis/providers/firms";
+import { fetchFloodRisk } from "@/lib/gis/providers/floods";
+
 import type { BBox } from "@/lib/gis/simulated";
 
 type Snapshot = {
