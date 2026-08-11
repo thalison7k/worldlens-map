@@ -1,4 +1,5 @@
 import { BrandGlobe } from "./BrandGlobe";
+import { GamaTecBadge } from "./GamaTecBadge";
 
 /**
  * Sidebar — reduced to a brand rail. Workspace switching and favorites
