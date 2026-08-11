@@ -145,7 +145,9 @@ export default function DashboardApp() {
   const activeLayers = Object.values(layers).filter((n) => n > 0).length;
   const totalPts = Object.values(layers).reduce((s, n) => s + n, 0);
   const alerts =
-    (snap.maxMag >= 5 ? 1 : 0) + (snap.fires > 20 ? 1 : 0) + (snap.aqi > 55 ? 1 : 0);
+    (snap.maxMag >= 5 ? 1 : 0) + (snap.fires > 20 ? 1 : 0) + (snap.aqi > 55 ? 1 : 0) +
+    (snap.flood >= 55 ? 1 : 0);
+
 
   const today = fc?.days?.[0];
   const hours = fc?.hours ?? [];
