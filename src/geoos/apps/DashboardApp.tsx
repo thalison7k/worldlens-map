@@ -51,6 +51,9 @@ type Snapshot = {
   precip: number;
   code: number;
   city: string;
+  flood: number;
+  floodCells: number;
+
 };
 
 const EMPTY: Snapshot = {
