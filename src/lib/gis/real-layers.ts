@@ -39,6 +39,35 @@ function asyncGroup(
   };
 }
 
+/**
+ * Gera um contorno orgânico (mancha) em torno de um ponto — usado nas
+ * animações 2D de áreas alagadas e das plumas do ENSO. `t` avança a fase
+ * para que a borda "respire" como água se espalhando.
+ */
+function blobRing(
+  lat: number,
+  lng: number,
+  radiusDeg: number,
+  seed: number,
+  t: number,
+  points = 28,
+  squash = 1,
+): L.LatLngExpression[] {
+  const ring: L.LatLngExpression[] = [];
+  for (let i = 0; i < points; i++) {
+    const a = (i / points) * Math.PI * 2;
+    const wobble =
+      1 +
+      0.24 * Math.sin(a * 3 + seed + t * 0.9) +
+      0.15 * Math.sin(a * 5 - seed * 1.7 + t * 1.4) +
+      0.09 * Math.sin(a * 8 + seed * 0.4 - t * 0.6);
+    const r = radiusDeg * wobble;
+    ring.push([lat + Math.sin(a) * r * squash, lng + Math.cos(a) * r / Math.max(0.2, Math.cos((lat * Math.PI) / 180))]);
+  }
+  return ring;
+}
+
+
 const WEATHER_ICON: Record<number, string> = {
   0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
   45: "🌫️", 48: "🌫️",
@@ -489,31 +518,87 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#0284c7", label: "La Niña (≤ -0.5)" },
       { color: "#1e40af", label: "La Niña forte (≤ -1.5)" },
     ],
-    build: asyncGroup(async (_ctx, group) => {
-      const data = await fetchEnso();
-      const color = ensoColor(data.phase);
-      const bounds: L.LatLngBoundsExpression = [[-5, -170], [5, -120]];
-      const rect = L.rectangle(bounds, { color, weight: 2, fillColor: color, fillOpacity: 0.35 });
-      const anom = data.latest ? data.latest.anom.toFixed(2) : "—";
-      const when = data.latest ? `${data.latest.year}-${String(data.latest.month).padStart(2, "0")}` : "sem dados";
-      rect.bindPopup(
-        `<div style="min-width:220px">
-          <div style="font-weight:700;font-size:14px;color:${color}">🌊 ENSO · Niño 3.4</div>
-          <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
-            <b>Fase:</b> ${ensoLabel(data.phase)}<br/>
-            <b>Anomalia SST:</b> ${anom} °C<br/>
-            <b>Referência:</b> ${when}<br/>
-            <b>Região:</b> 5°S–5°N · 170°W–120°W<br/>
-            <b>Fonte:</b> NOAA CPC (ONI)
-          </div>
-        </div>`,
-      );
-      rect.addTo(group);
+    build: (ctx) => {
+      const group = L.layerGroup();
+      let disposed = false;
+      let opacity = 0.55;
+      let phase = 0;
+      const meta = { count: 0 };
+      type Plume = { poly: L.Polygon; lat: number; lng: number; r: number; seed: number; drift: number; alpha: number };
+      const plumes: Plume[] = [];
+
+      const ready = (async () => {
+        const data = await fetchEnso();
+        if (disposed) return { count: 0 };
+        const anomVal = data.latest?.anom ?? 0;
+        const warm = anomVal >= 0;
+        const strength = Math.min(1, Math.abs(anomVal) / 2);
+        const color = ensoColor(data.phase);
+        const anom = data.latest ? data.latest.anom.toFixed(2) : "—";
+        const when = data.latest ? `${data.latest.year}-${String(data.latest.month).padStart(2, "0")}` : "sem dados";
+        const popup = `<div style="min-width:230px">
+            <div style="font-weight:700;font-size:14px;color:${color}">🌊 ENSO · Niño 3.4</div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+              <b>Fase:</b> ${ensoLabel(data.phase)}<br/>
+              <b>Anomalia SST:</b> ${anom} °C<br/>
+              <b>Referência:</b> ${when}<br/>
+              <b>Região:</b> 5°S–5°N · 170°W–120°W<br/>
+              <b>Fonte:</b> NOAA CPC (ONI)
+            </div>
+          </div>`;
+
+        // Plumas ao longo do Pacífico equatorial: núcleo quente (El Niño) ou
+        // frio (La Niña) que "escoa" para leste, como na visualização de TSM.
+        const cores = warm
+          ? ["#fde047", "#fb923c", "#ef4444", "#b91c1c"]
+          : ["#bae6fd", "#38bdf8", "#2563eb", "#1e3a8a"];
+        for (let i = 0; i < 9; i++) {
+          const p = i / 8;
+          const lng = -170 + p * 70; // 170°W → 100°W
+          const lat = Math.sin(p * Math.PI) * 1.6 * (warm ? 1 : -1);
+          const r = (2.6 + Math.sin(p * Math.PI) * 4.2) * (0.6 + strength * 0.8);
+          const ci = Math.min(cores.length - 1, Math.round(Math.sin(p * Math.PI) * (cores.length - 1)));
+          const c = cores[ci]!;
+          const poly = L.polygon(blobRing(lat, lng, r, i * 1.9, 0, 30, 0.55), {
+            color: c,
+            weight: 1,
+            fillColor: c,
+            fillOpacity: 0.3 * opacity,
+            opacity: 0.5 * opacity,
+            className: "geoos-enso-plume",
+            interactive: i === 4,
+          });
+          if (i === 4) poly.bindPopup(popup);
+          poly.addTo(group);
+          plumes.push({ poly, lat, lng, r, seed: i * 1.9, drift: 0.5 + i * 0.08, alpha: 0.18 + Math.sin(p * Math.PI) * 0.24 });
+        }
+        meta.count = plumes.length;
+        return { count: plumes.length };
+      })().catch(() => ({ count: 0 }));
+
       return {
-        count: 1,
-        setOpacity: (o) => rect.setStyle({ opacity: o, fillOpacity: 0.35 * o }),
+        layer: group,
+        meta,
+        ready,
+        /** Animação 2D: plumas de anomalia térmica pulsando e escoando. */
+        tick: (dt: number) => {
+          if (!plumes.length) return;
+          phase += dt / 1000;
+          for (const p of plumes) {
+            const breathe = 1 + 0.12 * Math.sin(phase * p.drift + p.seed);
+            const lng = p.lng + Math.sin(phase * 0.25 + p.seed) * 1.8;
+            p.poly.setLatLngs(blobRing(p.lat, lng, p.r * breathe, p.seed, phase * 0.8, 30, 0.55));
+            p.poly.setStyle({ fillOpacity: (p.alpha + 0.06 * Math.sin(phase * 1.3 + p.seed)) * opacity });
+          }
+        },
+        setOpacity: (o) => {
+          opacity = o;
+          plumes.forEach((p) => p.poly.setStyle({ opacity: 0.5 * o, fillOpacity: p.alpha * o }));
+        },
+        dispose: () => { disposed = true; group.clearLayers(); },
       };
-    }),
+    },
+
   },
   {
     id: "cyclones" as never,
@@ -593,7 +678,16 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     ],
     build: (ctx) => {
       const group = L.layerGroup().addTo(ctx.map);
-      const circles: Array<{ c: L.Circle; base: number; risk: number }> = [];
+      type Zone = {
+        halo: L.Polygon;
+        core: L.Polygon;
+        lat: number;
+        lng: number;
+        rDeg: number;
+        risk: number;
+        seed: number;
+      };
+      const zones: Zone[] = [];
       let disposed = false;
       let opacity = 0.75;
       let phase = 0;
@@ -603,21 +697,14 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         if (disposed) return { count: 0 };
         const risky = cells.filter((c) => c.risk >= 25);
         const [w, s, e, n] = ctx.bbox;
-        const cellKm =
-          (Math.max(Math.abs(e - w), Math.abs(n - s)) / 5) * 111_000;
-        for (const f of risky) {
+        const span = Math.max(Math.abs(e - w), Math.abs(n - s));
+        for (let i = 0; i < risky.length; i++) {
+          const f = risky[i]!;
           const color = FLOOD_LEVEL_COLOR[f.level];
-          const base = Math.max(6_000, Math.min(90_000, cellKm * 0.45));
-          const circle = L.circle([f.lat, f.lng], {
-            radius: base,
-            color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: 0.22 * opacity,
-            opacity,
-            className: "geoos-flood-zone",
-          }).bindPopup(
-            `<div style="min-width:250px">
+          // raio em graus proporcional à célula da grade e ao risco
+          const rDeg = Math.max(0.05, Math.min(3.2, (span / 6) * (0.45 + (f.risk / 100) * 0.45)));
+          const seed = i * 1.37 + f.lat * 0.3;
+          const popup = `<div style="min-width:250px">
               <div style="font-weight:700;font-size:14px;color:${color}">🌊 Risco de alagamento · ${f.risk}/100</div>
               <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
                 <b>Classificação:</b> ${FLOOD_LEVEL_LABEL[f.level]}<br/>
@@ -631,37 +718,67 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
                 <b>Coords:</b> ${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}<br/>
                 <b>Fonte:</b> Open-Meteo Flood (GloFAS v4) + previsão de chuva + Copernicus DEM
               </div>
-            </div>`,
-          );
-          circle.addTo(group);
-          circles.push({ c: circle, base, risk: f.risk });
+            </div>`;
+
+          // Mancha externa (lâmina d'água rasa) + núcleo (alagamento severo)
+          const halo = L.polygon(blobRing(f.lat, f.lng, rDeg, seed, 0), {
+            color,
+            weight: 1,
+            fillColor: color,
+            fillOpacity: 0.16 * opacity,
+            opacity: 0.35 * opacity,
+            className: "geoos-flood-zone",
+            interactive: false,
+          });
+          const core = L.polygon(blobRing(f.lat, f.lng, rDeg * 0.55, seed + 3.1, 0), {
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.34 * opacity,
+            opacity: 0.8 * opacity,
+            className: "geoos-flood-zone",
+          }).bindPopup(popup);
+          halo.addTo(group);
+          core.addTo(group);
+          zones.push({ halo, core, lat: f.lat, lng: f.lng, rDeg, risk: f.risk, seed });
         }
-        return { count: circles.length };
+        return { count: zones.length };
       })().catch(() => ({ count: 0 }));
 
       return {
         layer: group,
         meta: { count: 0 },
         ready,
-        /** Animação 2D: pulso de "água subindo" proporcional ao risco. */
+        /**
+         * Animação 2D: ciclo de cheia — a mancha nasce pequena, se expande até
+         * o pico (proporcional ao risco) e recua, com a borda ondulando como
+         * lâmina d'água em movimento.
+         */
         tick: (dt: number) => {
-          if (!circles.length) return;
+          if (!zones.length) return;
           phase += dt / 1000;
-          for (let i = 0; i < circles.length; i++) {
-            const { c, base, risk } = circles[i]!;
-            const speed = 0.9 + (risk / 100) * 1.4;
-            const k = Math.sin(phase * speed + i * 0.7);
-            c.setRadius(base * (1 + k * 0.16));
-            c.setStyle({ fillOpacity: (0.14 + (k + 1) * 0.07) * opacity });
+          for (const z of zones) {
+            const speed = 0.28 + (z.risk / 100) * 0.35;
+            // ciclo 0→1→0 (enchente/vazante)
+            const cycle = (Math.sin(phase * speed + z.seed) + 1) / 2;
+            const grow = 0.45 + cycle * 0.75;
+            z.halo.setLatLngs(blobRing(z.lat, z.lng, z.rDeg * grow, z.seed, phase * 1.1));
+            z.core.setLatLngs(blobRing(z.lat, z.lng, z.rDeg * 0.55 * grow, z.seed + 3.1, phase * 1.6));
+            z.halo.setStyle({ fillOpacity: (0.10 + cycle * 0.14) * opacity });
+            z.core.setStyle({ fillOpacity: (0.24 + cycle * 0.22) * opacity });
           }
         },
         setOpacity: (o) => {
           opacity = o;
-          circles.forEach(({ c }) => c.setStyle({ opacity: o, fillOpacity: 0.22 * o }));
+          zones.forEach((z) => {
+            z.halo.setStyle({ opacity: 0.35 * o, fillOpacity: 0.16 * o });
+            z.core.setStyle({ opacity: 0.8 * o, fillOpacity: 0.34 * o });
+          });
         },
         dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
       };
     },
+
   },
 ];
 
