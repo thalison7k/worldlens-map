@@ -100,7 +100,10 @@ export function Topbar() {
             <Palette className="h-4 w-4" />
           </button>
           {paletteOpen && (
-            <div className="absolute right-0 top-9 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute right-0 top-9 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1.5 shadow-2xl backdrop-blur-xl duration-200 animate-in fade-in slide-in-from-top-1"
+            >
               <div className="px-2 pb-1.5 pt-1 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
                 GamaTec Themes
               </div>
@@ -109,11 +112,15 @@ export function Topbar() {
                   key={v.id}
                   onClick={() => {
                     setThemePalette(false);
+                    setVariant(v.id);
                     setTheme(v.mode);
                     bus.emit("theme.change", { theme: v.mode, variant: v.id });
                   }}
-                  className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.08]"
+                  className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors ${
+                    variant === v.id ? "bg-white/[0.10]" : "hover:bg-white/[0.08]"
+                  }`}
                 >
+
                   <span
                     className="h-7 w-7 shrink-0 rounded-md border border-white/15 transition-transform group-hover:scale-105"
                     style={{ background: `linear-gradient(135deg, ${v.tokens.accent}, ${v.tokens.accent2})` }}
