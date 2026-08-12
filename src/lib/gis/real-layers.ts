@@ -39,6 +39,35 @@ function asyncGroup(
   };
 }
 
+/**
+ * Gera um contorno orgânico (mancha) em torno de um ponto — usado nas
+ * animações 2D de áreas alagadas e das plumas do ENSO. `t` avança a fase
+ * para que a borda "respire" como água se espalhando.
+ */
+function blobRing(
+  lat: number,
+  lng: number,
+  radiusDeg: number,
+  seed: number,
+  t: number,
+  points = 28,
+  squash = 1,
+): L.LatLngExpression[] {
+  const ring: L.LatLngExpression[] = [];
+  for (let i = 0; i < points; i++) {
+    const a = (i / points) * Math.PI * 2;
+    const wobble =
+      1 +
+      0.24 * Math.sin(a * 3 + seed + t * 0.9) +
+      0.15 * Math.sin(a * 5 - seed * 1.7 + t * 1.4) +
+      0.09 * Math.sin(a * 8 + seed * 0.4 - t * 0.6);
+    const r = radiusDeg * wobble;
+    ring.push([lat + Math.sin(a) * r * squash, lng + Math.cos(a) * r / Math.max(0.2, Math.cos((lat * Math.PI) / 180))]);
+  }
+  return ring;
+}
+
+
 const WEATHER_ICON: Record<number, string> = {
   0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
   45: "🌫️", 48: "🌫️",
