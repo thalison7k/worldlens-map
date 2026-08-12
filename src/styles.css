@@ -254,6 +254,22 @@
   animation: none;
 }
 
+/* Plumas de anomalia térmica do ENSO (El Niño / La Niña) */
+.geoos-enso-plume {
+  filter: blur(2px);
+  animation: geoos-enso-glow 5s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes geoos-enso-glow {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+.leaflet-container.geoos-interacting .geoos-enso-plume {
+  animation: none;
+  filter: none;
+}
+
+
 
 /* ===== Ícone 3D animado do GeoOS (BrandGlobe / favicon) ===== */
 @keyframes geoos-bob {
