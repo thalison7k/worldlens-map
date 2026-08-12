@@ -105,8 +105,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     map.on("click", (e) => bus.emit("map.click", { lat: e.latlng.lat, lng: e.latlng.lng }));
     emitBbox();
 
-    // Mobile: dim overlay panes during interaction to keep gestures fluid.
-    if (isMobile) {
+    // Pausa as animações CSS das camadas durante pan/zoom (mobile e desktop)
+    // — mantém o gesto fluido em qualquer plataforma.
+    {
       const container = map.getContainer();
       const setInteracting = (on: boolean) => {
         container.classList.toggle("geoos-interacting", on);
@@ -114,6 +115,7 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       map.on("movestart zoomstart", () => setInteracting(true));
       map.on("moveend zoomend", () => setInteracting(false));
     }
+
 
     // Low-frequency tick loop. Real environmental layers are mostly static;
     // running requestAnimationFrame forever was wasting main-thread time.
