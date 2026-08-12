@@ -63,12 +63,18 @@ export function Topbar() {
           </button>
         )}
         <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
+          onClick={() => {
+            const next = theme === "dark" ? "light" : "dark";
+            setTheme(next);
+            // sem este evento o Theme Engine nunca aplicava os tokens/mapa
+            bus.emit("theme.change", { theme: next });
+          }}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 transition-colors hover:bg-white/10"
           title="Alternar Light/Dark"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
+
         <div className="relative">
           <button
             onClick={() => setThemePalette((v) => !v)}
