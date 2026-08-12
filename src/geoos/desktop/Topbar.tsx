@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, Search, Sun, Moon, Palette, Download } from "lucide-react";
 import { useGeoOS } from "@/geoos/core/store";
 import { WORKSPACES } from "@/geoos/core/workspaces";
-import { THEME_VARIANTS } from "@/geoos/core/theme";
+import { THEME_VARIANTS, getCurrentVariant } from "@/geoos/core/theme";
 import { bus } from "@/geoos/core/bus";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { GamaTecBadge } from "./GamaTecBadge";
@@ -26,7 +26,23 @@ export function Topbar() {
   }, []);
 
   const [paletteOpen, setThemePalette] = useState(false);
+  const [variant, setVariant] = useState<string>(() => getCurrentVariant());
   const { canInstall, install } = usePWAInstall();
+
+  // fecha o seletor de temas ao clicar fora ou apertar Esc
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const close = () => setThemePalette(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [paletteOpen]);
+
+
 
 
   return (
@@ -63,12 +79,18 @@ export function Topbar() {
           </button>
         )}
         <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
+          onClick={() => {
+            const next = theme === "dark" ? "light" : "dark";
+            setTheme(next);
+            // sem este evento o Theme Engine nunca aplicava os tokens/mapa
+            bus.emit("theme.change", { theme: next });
+          }}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 transition-colors hover:bg-white/10"
           title="Alternar Light/Dark"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
+
         <div className="relative">
           <button
             onClick={() => setThemePalette((v) => !v)}
@@ -78,7 +100,10 @@ export function Topbar() {
             <Palette className="h-4 w-4" />
           </button>
           {paletteOpen && (
-            <div className="absolute right-0 top-9 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              className="absolute right-0 top-9 z-50 w-64 overflow-hidden rounded-xl border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1.5 shadow-2xl backdrop-blur-xl duration-200 animate-in fade-in slide-in-from-top-1"
+            >
               <div className="px-2 pb-1.5 pt-1 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
                 GamaTec Themes
               </div>
@@ -87,11 +112,15 @@ export function Topbar() {
                   key={v.id}
                   onClick={() => {
                     setThemePalette(false);
+                    setVariant(v.id);
                     setTheme(v.mode);
                     bus.emit("theme.change", { theme: v.mode, variant: v.id });
                   }}
-                  className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/[0.08]"
+                  className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors ${
+                    variant === v.id ? "bg-white/[0.10]" : "hover:bg-white/[0.08]"
+                  }`}
                 >
+
                   <span
                     className="h-7 w-7 shrink-0 rounded-md border border-white/15 transition-transform group-hover:scale-105"
                     style={{ background: `linear-gradient(135deg, ${v.tokens.accent}, ${v.tokens.accent2})` }}

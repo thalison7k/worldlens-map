@@ -6,6 +6,7 @@
  * never import this file directly; they only listen to the bus.
  */
 import { bus } from "./bus";
+import { useGeoOS } from "./store";
 
 export type ThemeMode = "dark" | "light";
 /** GamaTec design system — exatamente 3 variantes oficiais. */
@@ -98,6 +99,8 @@ function applyTokens(v: ThemeVariant) {
   root.style.setProperty("--geoos-window", v.tokens.window);
   root.style.setProperty("--geoos-accent", v.tokens.accent);
   root.style.setProperty("--geoos-accent-2", v.tokens.accent2);
+  root.style.setProperty("--geoos-text", v.tokens.text);
+  root.style.colorScheme = v.mode;
   root.dataset.themeVariant = v.id;
   // theme-color for PWA / mobile chrome
   let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
@@ -114,6 +117,8 @@ export function applyVariant(id: ThemeVariantId) {
   if (!v) return;
   currentVariant = id;
   applyTokens(v);
+  // mantém o store em sincronia — o botão Light/Dark e os apps leem daqui
+  if (useGeoOS.getState().theme !== v.mode) useGeoOS.setState({ theme: v.mode });
   bus.emit("map.setBase", { base: v.mapBase });
   try {
     localStorage.setItem("geoos.theme.variant", id);

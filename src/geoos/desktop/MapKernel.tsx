@@ -105,8 +105,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     map.on("click", (e) => bus.emit("map.click", { lat: e.latlng.lat, lng: e.latlng.lng }));
     emitBbox();
 
-    // Mobile: dim overlay panes during interaction to keep gestures fluid.
-    if (isMobile) {
+    // Pausa as animações CSS das camadas durante pan/zoom (mobile e desktop)
+    // — mantém o gesto fluido em qualquer plataforma.
+    {
       const container = map.getContainer();
       const setInteracting = (on: boolean) => {
         container.classList.toggle("geoos-interacting", on);
@@ -115,16 +116,23 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       map.on("moveend zoomend", () => setInteracting(false));
     }
 
+
     // Low-frequency tick loop. Real environmental layers are mostly static;
     // running requestAnimationFrame forever was wasting main-thread time.
     let last = performance.now();
+    let interacting = false;
+    map.on("movestart zoomstart", () => { interacting = true; });
+    map.on("moveend zoomend", () => { interacting = false; last = performance.now(); });
     const tickIv = setInterval(() => {
+      // aba em segundo plano ou gesto em andamento → não gasta main thread
+      if (document.hidden || interacting) { last = performance.now(); return; }
       if (![...builtRef.current.values()].some((b) => b.tick)) return;
       const now = performance.now();
-      const dt = now - last;
+      const dt = Math.min(1000, now - last);
       last = now;
       builtRef.current.forEach((b) => b.tick?.(dt));
     }, isMobile ? 500 : 250);
+
 
     return () => {
       if (cursorRaf) cancelAnimationFrame(cursorRaf);
