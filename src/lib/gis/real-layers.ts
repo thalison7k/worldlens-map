@@ -518,31 +518,87 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#0284c7", label: "La Niña (≤ -0.5)" },
       { color: "#1e40af", label: "La Niña forte (≤ -1.5)" },
     ],
-    build: asyncGroup(async (_ctx, group) => {
-      const data = await fetchEnso();
-      const color = ensoColor(data.phase);
-      const bounds: L.LatLngBoundsExpression = [[-5, -170], [5, -120]];
-      const rect = L.rectangle(bounds, { color, weight: 2, fillColor: color, fillOpacity: 0.35 });
-      const anom = data.latest ? data.latest.anom.toFixed(2) : "—";
-      const when = data.latest ? `${data.latest.year}-${String(data.latest.month).padStart(2, "0")}` : "sem dados";
-      rect.bindPopup(
-        `<div style="min-width:220px">
-          <div style="font-weight:700;font-size:14px;color:${color}">🌊 ENSO · Niño 3.4</div>
-          <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
-            <b>Fase:</b> ${ensoLabel(data.phase)}<br/>
-            <b>Anomalia SST:</b> ${anom} °C<br/>
-            <b>Referência:</b> ${when}<br/>
-            <b>Região:</b> 5°S–5°N · 170°W–120°W<br/>
-            <b>Fonte:</b> NOAA CPC (ONI)
-          </div>
-        </div>`,
-      );
-      rect.addTo(group);
+    build: (ctx) => {
+      const group = L.layerGroup();
+      let disposed = false;
+      let opacity = 0.55;
+      let phase = 0;
+      const meta = { count: 0 };
+      type Plume = { poly: L.Polygon; lat: number; lng: number; r: number; seed: number; drift: number; alpha: number };
+      const plumes: Plume[] = [];
+
+      const ready = (async () => {
+        const data = await fetchEnso();
+        if (disposed) return { count: 0 };
+        const anomVal = data.latest?.anom ?? 0;
+        const warm = anomVal >= 0;
+        const strength = Math.min(1, Math.abs(anomVal) / 2);
+        const color = ensoColor(data.phase);
+        const anom = data.latest ? data.latest.anom.toFixed(2) : "—";
+        const when = data.latest ? `${data.latest.year}-${String(data.latest.month).padStart(2, "0")}` : "sem dados";
+        const popup = `<div style="min-width:230px">
+            <div style="font-weight:700;font-size:14px;color:${color}">🌊 ENSO · Niño 3.4</div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
+              <b>Fase:</b> ${ensoLabel(data.phase)}<br/>
+              <b>Anomalia SST:</b> ${anom} °C<br/>
+              <b>Referência:</b> ${when}<br/>
+              <b>Região:</b> 5°S–5°N · 170°W–120°W<br/>
+              <b>Fonte:</b> NOAA CPC (ONI)
+            </div>
+          </div>`;
+
+        // Plumas ao longo do Pacífico equatorial: núcleo quente (El Niño) ou
+        // frio (La Niña) que "escoa" para leste, como na visualização de TSM.
+        const cores = warm
+          ? ["#fde047", "#fb923c", "#ef4444", "#b91c1c"]
+          : ["#bae6fd", "#38bdf8", "#2563eb", "#1e3a8a"];
+        for (let i = 0; i < 9; i++) {
+          const p = i / 8;
+          const lng = -170 + p * 70; // 170°W → 100°W
+          const lat = Math.sin(p * Math.PI) * 1.6 * (warm ? 1 : -1);
+          const r = (2.6 + Math.sin(p * Math.PI) * 4.2) * (0.6 + strength * 0.8);
+          const ci = Math.min(cores.length - 1, Math.round(Math.sin(p * Math.PI) * (cores.length - 1)));
+          const c = cores[ci]!;
+          const poly = L.polygon(blobRing(lat, lng, r, i * 1.9, 0, 30, 0.55), {
+            color: c,
+            weight: 1,
+            fillColor: c,
+            fillOpacity: 0.3 * opacity,
+            opacity: 0.5 * opacity,
+            className: "geoos-enso-plume",
+            interactive: i === 4,
+          });
+          if (i === 4) poly.bindPopup(popup);
+          poly.addTo(group);
+          plumes.push({ poly, lat, lng, r, seed: i * 1.9, drift: 0.5 + i * 0.08, alpha: 0.18 + Math.sin(p * Math.PI) * 0.24 });
+        }
+        meta.count = plumes.length;
+        return { count: plumes.length };
+      })().catch(() => ({ count: 0 }));
+
       return {
-        count: 1,
-        setOpacity: (o) => rect.setStyle({ opacity: o, fillOpacity: 0.35 * o }),
+        layer: group,
+        meta,
+        ready,
+        /** Animação 2D: plumas de anomalia térmica pulsando e escoando. */
+        tick: (dt: number) => {
+          if (!plumes.length) return;
+          phase += dt / 1000;
+          for (const p of plumes) {
+            const breathe = 1 + 0.12 * Math.sin(phase * p.drift + p.seed);
+            const lng = p.lng + Math.sin(phase * 0.25 + p.seed) * 1.8;
+            p.poly.setLatLngs(blobRing(p.lat, lng, p.r * breathe, p.seed, phase * 0.8, 30, 0.55));
+            p.poly.setStyle({ fillOpacity: (p.alpha + 0.06 * Math.sin(phase * 1.3 + p.seed)) * opacity });
+          }
+        },
+        setOpacity: (o) => {
+          opacity = o;
+          plumes.forEach((p) => p.poly.setStyle({ opacity: 0.5 * o, fillOpacity: p.alpha * o }));
+        },
+        dispose: () => { disposed = true; group.clearLayers(); },
       };
-    }),
+    },
+
   },
   {
     id: "cyclones" as never,
