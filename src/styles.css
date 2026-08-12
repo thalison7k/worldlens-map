@@ -442,3 +442,45 @@ body { touch-action: manipulation; }
   .geoos-globe-atmo,
   .geoos-globe-terminator { animation: none; }
 }
+
+/* ===================================================================
+   Tema claro (GamaTec Clear) — legibilidade
+   A UI do GeoOS foi escrita para fundos escuros (text-white, border-white/10,
+   bg-white/[0.03]). No tema claro esses tons desapareciam sobre o fundo claro,
+   causando o "bug do tema". Aqui reescrevemos as famílias de utilitários
+   brancos para tokens derivados do texto do tema ativo.
+   =================================================================== */
+:root[data-theme-variant="arctic"] {
+  color-scheme: light;
+}
+:root[data-theme-variant="arctic"] [class*="text-white"] {
+  color: color-mix(in oklab, var(--geoos-text) 92%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="text-white\/6"],
+:root[data-theme-variant="arctic"] [class*="text-white\/5"],
+:root[data-theme-variant="arctic"] [class*="text-white\/4"],
+:root[data-theme-variant="arctic"] [class*="text-white\/3"] {
+  color: color-mix(in oklab, var(--geoos-text) 62%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="border-white"] {
+  border-color: color-mix(in oklab, var(--geoos-text) 14%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="bg-white\/"] {
+  background-color: color-mix(in oklab, var(--geoos-text) 6%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="hover\:bg-white\/"]:hover {
+  background-color: color-mix(in oklab, var(--geoos-text) 11%, transparent);
+}
+/* superfícies próprias do GeoOS continuam vindo dos tokens */
+:root[data-theme-variant="arctic"] .leaflet-popup-content-wrapper,
+:root[data-theme-variant="arctic"] .leaflet-popup-tip {
+  background: var(--geoos-surface);
+  color: var(--geoos-text);
+}
+
+/* Transições suaves ao trocar de tema, sem custo em animações de mapa */
+:root:not(.geoos-no-transition) body,
+:root:not(.geoos-no-transition) header,
+:root:not(.geoos-no-transition) aside {
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
