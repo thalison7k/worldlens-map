@@ -118,13 +118,19 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     // Low-frequency tick loop. Real environmental layers are mostly static;
     // running requestAnimationFrame forever was wasting main-thread time.
     let last = performance.now();
+    let interacting = false;
+    map.on("movestart zoomstart", () => { interacting = true; });
+    map.on("moveend zoomend", () => { interacting = false; last = performance.now(); });
     const tickIv = setInterval(() => {
+      // aba em segundo plano ou gesto em andamento → não gasta main thread
+      if (document.hidden || interacting) { last = performance.now(); return; }
       if (![...builtRef.current.values()].some((b) => b.tick)) return;
       const now = performance.now();
-      const dt = now - last;
+      const dt = Math.min(1000, now - last);
       last = now;
       builtRef.current.forEach((b) => b.tick?.(dt));
     }, isMobile ? 500 : 250);
+
 
     return () => {
       if (cursorRaf) cancelAnimationFrame(cursorRaf);
