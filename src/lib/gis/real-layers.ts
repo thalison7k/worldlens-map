@@ -678,7 +678,16 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     ],
     build: (ctx) => {
       const group = L.layerGroup().addTo(ctx.map);
-      const circles: Array<{ c: L.Circle; base: number; risk: number }> = [];
+      type Zone = {
+        halo: L.Polygon;
+        core: L.Polygon;
+        lat: number;
+        lng: number;
+        rDeg: number;
+        risk: number;
+        seed: number;
+      };
+      const zones: Zone[] = [];
       let disposed = false;
       let opacity = 0.75;
       let phase = 0;
@@ -688,21 +697,14 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         if (disposed) return { count: 0 };
         const risky = cells.filter((c) => c.risk >= 25);
         const [w, s, e, n] = ctx.bbox;
-        const cellKm =
-          (Math.max(Math.abs(e - w), Math.abs(n - s)) / 5) * 111_000;
-        for (const f of risky) {
+        const span = Math.max(Math.abs(e - w), Math.abs(n - s));
+        for (let i = 0; i < risky.length; i++) {
+          const f = risky[i]!;
           const color = FLOOD_LEVEL_COLOR[f.level];
-          const base = Math.max(6_000, Math.min(90_000, cellKm * 0.45));
-          const circle = L.circle([f.lat, f.lng], {
-            radius: base,
-            color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: 0.22 * opacity,
-            opacity,
-            className: "geoos-flood-zone",
-          }).bindPopup(
-            `<div style="min-width:250px">
+          // raio em graus proporcional à célula da grade e ao risco
+          const rDeg = Math.max(0.05, Math.min(3.2, (span / 6) * (0.45 + (f.risk / 100) * 0.45)));
+          const seed = i * 1.37 + f.lat * 0.3;
+          const popup = `<div style="min-width:250px">
               <div style="font-weight:700;font-size:14px;color:${color}">🌊 Risco de alagamento · ${f.risk}/100</div>
               <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
                 <b>Classificação:</b> ${FLOOD_LEVEL_LABEL[f.level]}<br/>
@@ -716,37 +718,67 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
                 <b>Coords:</b> ${f.lat.toFixed(3)}, ${f.lng.toFixed(3)}<br/>
                 <b>Fonte:</b> Open-Meteo Flood (GloFAS v4) + previsão de chuva + Copernicus DEM
               </div>
-            </div>`,
-          );
-          circle.addTo(group);
-          circles.push({ c: circle, base, risk: f.risk });
+            </div>`;
+
+          // Mancha externa (lâmina d'água rasa) + núcleo (alagamento severo)
+          const halo = L.polygon(blobRing(f.lat, f.lng, rDeg, seed, 0), {
+            color,
+            weight: 1,
+            fillColor: color,
+            fillOpacity: 0.16 * opacity,
+            opacity: 0.35 * opacity,
+            className: "geoos-flood-zone",
+            interactive: false,
+          });
+          const core = L.polygon(blobRing(f.lat, f.lng, rDeg * 0.55, seed + 3.1, 0), {
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 0.34 * opacity,
+            opacity: 0.8 * opacity,
+            className: "geoos-flood-zone",
+          }).bindPopup(popup);
+          halo.addTo(group);
+          core.addTo(group);
+          zones.push({ halo, core, lat: f.lat, lng: f.lng, rDeg, risk: f.risk, seed });
         }
-        return { count: circles.length };
+        return { count: zones.length };
       })().catch(() => ({ count: 0 }));
 
       return {
         layer: group,
         meta: { count: 0 },
         ready,
-        /** Animação 2D: pulso de "água subindo" proporcional ao risco. */
+        /**
+         * Animação 2D: ciclo de cheia — a mancha nasce pequena, se expande até
+         * o pico (proporcional ao risco) e recua, com a borda ondulando como
+         * lâmina d'água em movimento.
+         */
         tick: (dt: number) => {
-          if (!circles.length) return;
+          if (!zones.length) return;
           phase += dt / 1000;
-          for (let i = 0; i < circles.length; i++) {
-            const { c, base, risk } = circles[i]!;
-            const speed = 0.9 + (risk / 100) * 1.4;
-            const k = Math.sin(phase * speed + i * 0.7);
-            c.setRadius(base * (1 + k * 0.16));
-            c.setStyle({ fillOpacity: (0.14 + (k + 1) * 0.07) * opacity });
+          for (const z of zones) {
+            const speed = 0.28 + (z.risk / 100) * 0.35;
+            // ciclo 0→1→0 (enchente/vazante)
+            const cycle = (Math.sin(phase * speed + z.seed) + 1) / 2;
+            const grow = 0.45 + cycle * 0.75;
+            z.halo.setLatLngs(blobRing(z.lat, z.lng, z.rDeg * grow, z.seed, phase * 1.1));
+            z.core.setLatLngs(blobRing(z.lat, z.lng, z.rDeg * 0.55 * grow, z.seed + 3.1, phase * 1.6));
+            z.halo.setStyle({ fillOpacity: (0.10 + cycle * 0.14) * opacity });
+            z.core.setStyle({ fillOpacity: (0.24 + cycle * 0.22) * opacity });
           }
         },
         setOpacity: (o) => {
           opacity = o;
-          circles.forEach(({ c }) => c.setStyle({ opacity: o, fillOpacity: 0.22 * o }));
+          zones.forEach((z) => {
+            z.halo.setStyle({ opacity: 0.35 * o, fillOpacity: 0.16 * o });
+            z.core.setStyle({ opacity: 0.8 * o, fillOpacity: 0.34 * o });
+          });
         },
         dispose: () => { disposed = true; group.clearLayers(); ctx.map.removeLayer(group); },
       };
     },
+
   },
 ];
 
