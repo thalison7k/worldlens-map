@@ -26,7 +26,23 @@ export function Topbar() {
   }, []);
 
   const [paletteOpen, setThemePalette] = useState(false);
+  const [variant, setVariant] = useState<string>(() => getCurrentVariant());
   const { canInstall, install } = usePWAInstall();
+
+  // fecha o seletor de temas ao clicar fora ou apertar Esc
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const close = () => setThemePalette(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [paletteOpen]);
+
+
 
 
   return (
