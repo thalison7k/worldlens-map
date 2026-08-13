@@ -34,6 +34,30 @@ const inBox = (b: BBox, lat: number, lng: number) =>
 
 const fmt = (n: number, d = 1) => (Number.isFinite(n) ? n.toFixed(d) : "n/d");
 
+/** Distância aproximada em km (Haversine). */
+function distKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/** Item mais próximo do centro do mapa, com a distância em km. */
+function nearest<T extends { lat: number; lng: number }>(
+  items: T[],
+  center: { lat: number; lng: number },
+): { item: T; km: number } | null {
+  let best: { item: T; km: number } | null = null;
+  for (const item of items) {
+    const km = distKm(center, item);
+    if (!best || km < best.km) best = { item, km };
+  }
+  return best;
+}
+
 /** Cache curto do dossiê — evita refazer 6 fetches em perguntas sequenciais. */
 const CTX_TTL_MS = 60_000;
 let ctxCache: { key: string; ts: number; value: string } | null = null;
