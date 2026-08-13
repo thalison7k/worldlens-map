@@ -62,15 +62,16 @@ async function buildGeoContextUncached(input: GeoContextInput): Promise<string> 
   const { bbox, center, zoom, activeLayers } = input;
   const active = new Set(activeLayers.map((l) => l.id));
 
-  const [quakesAll, air, weather, fires, enso, iot] = await Promise.all([
+  const [quakesAll, air, weather, fires, enso, iot, place, cyclonesAll, floods] = await Promise.all([
     withTimeout(fetchEarthquakes("day"), 8000, []),
     active.has("air_quality") ? withTimeout(fetchAirStations(bbox, 60), 8000, []) : Promise.resolve([]),
-    active.has("weather") || active.has("rain_radar")
-      ? withTimeout(fetchWeather(bbox, 16), 9000, [])
-      : Promise.resolve([]),
+    withTimeout(fetchWeather(bbox, 16), 9000, []),
     active.has("fires") ? withTimeout(fetchFires(bbox, 1), 9000, []) : Promise.resolve([]),
     active.has("el_nino") ? withTimeout(fetchEnso(), 6000, null) : Promise.resolve(null),
     active.has("iot_sensors") ? withTimeout(fetchReadings(60), 6000, []) : Promise.resolve([]),
+    withTimeout(reverseGeocode(center.lat, center.lng), 6000, null),
+    withTimeout(fetchCyclones(), 8000, []),
+    active.has("flood_risk") ? withTimeout(fetchFloodRisk(bbox, 3), 9000, []) : Promise.resolve([]),
   ]);
 
   const quakes = quakesAll.filter((q) => inBox(bbox, q.lat, q.lng));
@@ -85,6 +86,73 @@ async function buildGeoContextUncached(input: GeoContextInput): Promise<string> 
     }`,
   );
   L.push(`Timestamp da coleta: ${new Date().toISOString()}`);
+
+  // ---- Local em foco: o que o usuário está efetivamente olhando -------------
+  L.push("\n### LOCAL EM FOCO (usar sempre como referência da resposta)");
+  if (place) {
+    const a = place.address;
+    const city = a.city || a.town || a.village || a.suburb || a.neighbourhood;
+    L.push(
+      `Local no centro da tela: ${place.displayName}` +
+        `${city ? ` · município/localidade: ${city}` : ""}` +
+        `${a.state ? ` · ${a.state}` : ""}${a.country ? ` · ${a.country}` : ""}`,
+    );
+  } else {
+    L.push(
+      `Local no centro da tela: sem correspondência no OpenStreetMap ` +
+        `(provavelmente oceano ou área remota) em ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}.`,
+    );
+  }
+
+  const nearWeather = nearest(weather, center);
+  if (nearWeather) {
+    const w = nearWeather.item;
+    L.push(
+      `Condições agora no ponto mais próximo (${w.city}, a ${fmt(nearWeather.km, 0)} km): ` +
+        `${fmt(w.temp)} °C (sensação ${fmt(w.feels)}), umidade ${w.humidity}%, vento ${fmt(w.windSpeed)} km/h ` +
+        `(rajada ${fmt(w.gust)}), nuvens ${w.cloud}%, chuva ${fmt(w.precipitation)} mm/h, UV ${fmt(w.uv)}.`,
+    );
+  }
+  const nearAir = nearest(air, center);
+  if (nearAir) {
+    const a = nearAir.item;
+    L.push(
+      `Qualidade do ar mais próxima (${a.city}, ${fmt(nearAir.km, 0)} km): PM2.5 ${fmt(a.value)} ${a.unit}` +
+        `${a.pm10 != null ? `, PM10 ${fmt(a.pm10)}` : ""}${a.aqi != null ? `, AQI ${a.aqi}` : ""}.`,
+    );
+  }
+  const nearFire = nearest(fires, center);
+  if (nearFire) {
+    L.push(
+      `Foco de queimada mais próximo: ${fmt(nearFire.km, 0)} km do centro · FRP ${fmt(nearFire.item.frp)} MW ` +
+        `(${nearFire.item.satellite}).`,
+    );
+  }
+  const nearQuake = nearest(quakesAll, center);
+  if (nearQuake && nearQuake.km < 1500) {
+    L.push(
+      `Sismo mais próximo (24h): M ${fmt(nearQuake.item.mag)} · ${nearQuake.item.place} · ` +
+        `${fmt(nearQuake.km, 0)} km do centro.`,
+    );
+  }
+  const nearFlood = [...floods].sort((a, b) => b.risk - a.risk)[0];
+  if (nearFlood) {
+    L.push(
+      `Risco de enchente na área: índice ${fmt(nearFlood.risk, 0)}/100 — ${FLOOD_LEVEL_LABEL[nearFlood.level]} · ` +
+        `chuva prevista 24h ${fmt(nearFlood.rain24)} mm / 72h ${fmt(nearFlood.rain72)} mm.`,
+    );
+  }
+  const nearStorm = nearest(cyclonesAll, center);
+  if (nearStorm && nearStorm.km < 3000) {
+    const s = nearStorm.item;
+    L.push(
+      `${stormKind(s)} ${s.name} (${cycloneCategory(s.intensityKt).label}) a ${fmt(nearStorm.km, 0)} km do centro, ` +
+        `ventos ${s.intensityKt ?? "n/d"} kt.`,
+    );
+  } else {
+    L.push(`Nenhum furacão/ciclone tropical ativo num raio de 3000 km do centro (${cyclonesAll.length} ativos no mundo).`);
+  }
+
 
   L.push("\n### DADOS CARREGADOS NA ÁREA VISÍVEL");
 
