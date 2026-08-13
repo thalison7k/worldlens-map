@@ -70,6 +70,8 @@ let ctxCache: { key: string; ts: number; value: string } | null = null;
 export async function buildGeoContext(input: GeoContextInput): Promise<string> {
   const cacheKey = JSON.stringify([
     input.bbox.map((n) => n.toFixed(2)),
+    input.center.lat.toFixed(3),
+    input.center.lng.toFixed(3),
     input.zoom,
     input.activeLayers.map((l) => l.id).sort(),
   ]);
