@@ -5,7 +5,7 @@ import { fetchAirStations, pm25Color } from "./providers/openaq";
 import { fetchEnso, ensoColor, ensoLabel } from "./providers/enso";
 import { fetchWeather, tempColor } from "./providers/openmeteo";
 import { fetchFires, fireColor } from "./providers/firms";
-import { fetchCyclones, cycloneCategory, bearingLabel } from "./providers/cyclones";
+import { fetchCyclones, cycloneCategory, bearingLabel, stormKind } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
 import { fetchFloodRisk, FLOOD_LEVEL_COLOR, FLOOD_LEVEL_LABEL } from "./providers/floods";
 
@@ -602,7 +602,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
   },
   {
     id: "cyclones" as never,
-    label: "Ciclones tropicais (NOAA NHC + GDACS)",
+    label: "Furacões e ciclones tropicais (NOAA NHC + GDACS)",
     icon: "🌀",
     category: "clima",
     order: 97,
@@ -611,17 +611,18 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
     legend: [
       { color: "#94a3b8", label: "Depressão tropical" },
       { color: "#38bdf8", label: "Tempestade tropical" },
-      { color: "#f59e0b", label: "Categoria 1" },
-      { color: "#ea580c", label: "Categoria 2" },
-      { color: "#dc2626", label: "Categoria 3" },
-      { color: "#b91c1c", label: "Categoria 4" },
-      { color: "#7f1d1d", label: "Categoria 5" },
+      { color: "#f59e0b", label: "Furacão cat. 1" },
+      { color: "#ea580c", label: "Furacão cat. 2" },
+      { color: "#dc2626", label: "Furacão cat. 3" },
+      { color: "#b91c1c", label: "Furacão cat. 4" },
+      { color: "#7f1d1d", label: "Furacão cat. 5" },
     ],
     build: asyncGroup(async (_ctx, group) => {
       const storms = await fetchCyclones();
       const shapes: Array<L.Circle | L.Marker> = [];
       for (const s of storms) {
         const { label, color } = cycloneCategory(s.intensityKt);
+        const kind = stormKind(s);
         const radiusM = Math.max(80_000, (s.intensityKt ?? 30) * 3_000);
         const eye = L.circle([s.lat, s.lng], {
           radius: radiusM, color, fillColor: color, fillOpacity: 0.18, weight: 2,
@@ -635,9 +636,10 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         const marker = L.marker([s.lat, s.lng], { icon });
         const popup =
           `<div style="min-width:240px">
-            <div style="font-weight:700;font-size:14px;color:${color}">🌀 ${s.name} · ${label}</div>
+            <div style="font-weight:700;font-size:14px;color:${color}">🌀 ${kind} ${s.name}</div>
             <div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px">
-              <b>Classificação:</b> ${s.classification}<br/>
+              <b>Intensidade:</b> ${label}<br/>
+              <b>Classificação (fonte):</b> ${s.classification}<br/>
               <b>Ventos máximos:</b> ${s.intensityKt != null ? `${s.intensityKt} kt (${Math.round(s.intensityKt * 1.852)} km/h)` : "n/d"}<br/>
               <b>Pressão central:</b> ${s.pressureMb != null ? `${s.pressureMb} hPa` : "n/d"}<br/>
               <b>Deslocamento:</b> ${bearingLabel(s.movementDir)}${s.movementSpeedKt != null ? ` a ${s.movementSpeedKt} kt` : ""}<br/>
@@ -646,6 +648,7 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               <b>Fonte:</b> ${s.source ?? "NOAA National Hurricane Center"}
             </div>
           </div>`;
+
         eye.bindPopup(popup);
         marker.bindPopup(popup);
         eye.addTo(group);
