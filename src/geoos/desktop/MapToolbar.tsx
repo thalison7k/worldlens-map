@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Sparkles, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
 import { EXPORT_FORMATS, EXPORT_LABEL, exportArea, type ExportFormat } from "@/lib/gis/export";
+import { DLSS_LABEL, loadMode, nextMode, saveMode, type DLSSMode } from "@/geoos/core/dlss";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import type { BBox } from "@/lib/gis/simulated";
 
