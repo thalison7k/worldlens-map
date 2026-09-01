@@ -1,10 +1,6 @@
 import type { TileProvider } from "./types";
 
-/**
- * Base map providers. All free / no-key by default.
- * Mapbox & Google are declared as stubs so the UI can list them; enabling
- * only requires adding the tile URL + key.
- */
+/** Base maps públicos usados pelo GeoOS — nenhum deles exige chave. */
 export const BASE_PROVIDERS: Record<string, TileProvider> = {
   street: {
     id: "street",
@@ -33,9 +29,11 @@ export const BASE_PROVIDERS: Record<string, TileProvider> = {
   satellite: {
     id: "satellite",
     label: "Satélite",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics",
-    maxZoom: 19,
+    // Sentinel-2 cloudless da EOX. A antiga base Esri começou a devolver
+    // tiles com “API KEY REQUIRED / Map data not yet available”.
+    url: "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg",
+    attribution: "Sentinel-2 cloudless © EOX · Copernicus",
+    maxZoom: 17,
   },
   terrain: {
     id: "terrain",
@@ -56,12 +54,6 @@ export const HYBRID_OVERLAY: TileProvider = {
   maxZoom: 20,
   subdomains: "abcd",
   overlay: true,
-};
-
-/** Placeholder providers, ready to be enabled with a key later. */
-export const FUTURE_PROVIDERS = {
-  mapbox: { id: "mapbox", label: "Mapbox (requer chave)", requiresKey: true },
-  google: { id: "google", label: "Google Maps (requer chave)", requiresKey: true },
 };
 
 export type BaseView =

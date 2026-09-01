@@ -344,8 +344,10 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       const year = now.getUTCFullYear();
       const startOfYear = Date.UTC(year, 0, 1);
       const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86_400_000);
-      // último período de 8 dias já consolidado (com folga de 1 período)
-      const periodStart = Math.max(0, Math.floor(dayOfYear / 8) * 8 - 8);
+      // O catálogo pode levar vários dias para publicar o mosaico global.
+      // Usamos três períodos completos de defasagem para nunca requisitar uma
+      // data anunciada no calendário, mas ainda ausente no WMTS.
+      const periodStart = Math.max(0, Math.floor(dayOfYear / 8) * 8 - 24);
       const iso = new Date(startOfYear + periodStart * 86_400_000).toISOString().slice(0, 10);
       const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${iso}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
       const tile = safeTileLayer(url, {
