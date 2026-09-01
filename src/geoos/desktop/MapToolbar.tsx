@@ -111,12 +111,38 @@ export function MapToolbar() {
               <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
                 <Camera className="h-3.5 w-3.5" />
               </ToolBtn>
-              <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
-                <Download className="h-3.5 w-3.5" />
-              </ToolBtn>
-              <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
-                <Download className="h-3.5 w-3.5 rotate-90" />
-              </ToolBtn>
+              <div className="relative">
+                <ToolBtn
+                  title="Exportar dados da área visível"
+                  active={exportOpen}
+                  onClick={() => setExportOpen((v) => !v)}
+                >
+                  {exporting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                </ToolBtn>
+                {exportOpen && (
+                  <div className="absolute left-9 top-0 z-40 w-40 rounded-lg border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1 shadow-xl backdrop-blur-xl duration-200 animate-in fade-in slide-in-from-left-2">
+                    <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-white/40">
+                      Exportar dados
+                    </p>
+                    {EXPORT_FORMATS.map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        disabled={exporting}
+                        onClick={() => void runExport(f)}
+                        className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+                      >
+                        {EXPORT_LABEL[f]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <span className="my-0.5 h-px w-4 bg-white/10" />
               <Compass className="h-3.5 w-3.5 text-white/50 transition-transform duration-500 hover:rotate-180" />
             </div>
