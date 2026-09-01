@@ -103,6 +103,14 @@ export default function AIAssistantApp() {
   const [hasMemory, setHasMemory] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Voz (TTS) para tomada de decisão em campo.
+  const [voiceAvailable] = useState(() => speechSupported());
+  const [voiceOn, setVoiceOn] = useState(() => isVoiceEnabled());
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const voiceRef = useRef(voiceOn);
+  voiceRef.current = voiceOn;
+  useEffect(() => () => stopSpeech(), []);
+
   const summaryRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
