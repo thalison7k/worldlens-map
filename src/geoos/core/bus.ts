@@ -34,6 +34,7 @@ export type GeoOSEvents = {
   "map.fullscreen": undefined;
   "map.measure": { mode: "distance" | "area" | "off" };
   "map.measureResult": { mode: "distance" | "area"; value: number; unit: string };
+  "render.dlss": { mode: "off" | "balanced" | "quality" | "ultra" };
   "layers.setRefreshInterval": { ms: number };
   // system
   "api.status": ApiStatus;

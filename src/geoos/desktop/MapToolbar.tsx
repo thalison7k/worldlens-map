@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Sparkles, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
 import { EXPORT_FORMATS, EXPORT_LABEL, exportArea, type ExportFormat } from "@/lib/gis/export";
+import { DLSS_LABEL, loadMode, nextMode, saveMode, type DLSSMode } from "@/geoos/core/dlss";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import type { BBox } from "@/lib/gis/simulated";
 
@@ -20,6 +21,14 @@ export function MapToolbar() {
   const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [dlss, setDlss] = useState<DLSSMode>(() => loadMode());
+  const cycleDlss = () => {
+    const next = nextMode(dlss);
+    setDlss(next);
+    saveMode(next);
+    bus.emit("render.dlss", { mode: next });
+  };
+
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = window.localStorage.getItem("geoos.sigbar.collapsed");
@@ -134,9 +143,17 @@ export function MapToolbar() {
               <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
                 <Maximize2 className="h-3.5 w-3.5" />
               </ToolBtn>
+              <ToolBtn
+                title={`${DLSS_LABEL[dlss]} — clique para alternar a qualidade de render`}
+                active={dlss !== "off"}
+                onClick={cycleDlss}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </ToolBtn>
               <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
                 <Camera className="h-3.5 w-3.5" />
               </ToolBtn>
+
               <div className="relative">
                 <ToolBtn
                   title="Exportar dados da área visível"

@@ -5,6 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { safeTileLayer, MAP_MAX_ZOOM } from "@/lib/gis/tiles";
+import { applyDLSS, loadMode, superSampling, type DLSSMode } from "@/geoos/core/dlss";
 import "@/geoos/core/map-state";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
@@ -48,6 +49,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const isMobile = typeof window !== "undefined" &&
     (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
   const [base, setBase] = useState<BaseView>(theme === "dark" ? "dark" : "light");
+  const [dlss, setDlss] = useState<DLSSMode>(() => loadMode());
+  const dlssRef = useRef<DLSSMode>(dlss);
   const [globe, setGlobe] = useState(false);
   
 
@@ -70,7 +73,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       zoomSnap: isMobile ? 0.5 : 0.25,
     });
     mapRef.current = map;
-    L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    // Sem controle de atribuição: nenhuma marca d'água sobre o mapa.
+    applyDLSS(map.getContainer(), dlssRef.current);
 
     const emitBbox = () => {
       const b = map.getBounds();
@@ -151,28 +155,44 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const { base: cfg, overlay } = resolveBase(base);
     if (baseRef.current) map.removeLayer(baseRef.current);
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
+    const ss = superSampling(dlss);
     baseRef.current = safeTileLayer(cfg.url, {
-      attribution: cfg.attribution,
+      // Sem `attribution`: o mapa não exibe marca d'água de provedor.
       // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
       maxNativeZoom: cfg.maxZoom ?? 19,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
+      detectRetina: ss,
+      keepBuffer: dlss === "ultra" ? 4 : 2,
       // `subdomains: undefined` sobrescreveria o padrão do Leaflet e quebraria
       // `_getSubdomain` (tiles inválidos / marca d'água do provedor).
       ...(cfg.subdomains ? { subdomains: cfg.subdomains } : {}),
     }).addTo(map);
     if (overlay) {
       overlayRef.current = safeTileLayer(overlay.url, {
-        attribution: overlay.attribution,
         maxNativeZoom: overlay.maxZoom ?? 19,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
+        detectRetina: ss,
         ...(overlay.subdomains ? { subdomains: overlay.subdomains } : {}),
         pane: "overlayPane",
       }).addTo(map);
     }
 
-  }, [base]);
+  }, [base, dlss, isMobile]);
+
+  // DLSS 5 — aplica o modo ao container e reage ao Event Bus
+  useEffect(() => {
+    dlssRef.current = dlss;
+    const map = mapRef.current;
+    if (map) applyDLSS(map.getContainer(), dlss);
+  }, [dlss]);
+  useEffect(() => {
+    const handler = (p: { mode: DLSSMode }) => setDlss(p.mode);
+    bus.on("render.dlss", handler);
+    return () => { bus.off("render.dlss", handler); };
+  }, []);
+
 
   // helpers: build/destroy a layer by id
   const buildLayerKey = (id: string, map: L.Map) => {
