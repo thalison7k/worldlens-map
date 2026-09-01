@@ -185,13 +185,41 @@ export default function DashboardApp() {
             {new Date(updatedAt).toLocaleTimeString("pt-BR")}
           </p>
         </div>
-        <button
-          onClick={() => void refresh()}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
-          title="Atualizar agora"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="relative flex shrink-0 items-center gap-1">
+          <button
+            onClick={() => setMenu((m) => !m)}
+            className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
+            title="Exportar relatório"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => void refresh()}
+            className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
+            title="Atualizar agora"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          {menu && (
+            <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-white/10 bg-[#0b1220]/95 p-1 shadow-xl backdrop-blur">
+              {([
+                ["xls", "Excel (.xls)"],
+                ["doc", "Word (.doc)"],
+                ["csv", "CSV (planilha)"],
+                ["json", "JSON (bruto)"],
+              ] as const).map(([f, label]) => (
+                <button
+                  key={f}
+                  onClick={() => doExport(f)}
+                  className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Tabs */}
