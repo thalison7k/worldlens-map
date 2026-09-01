@@ -235,16 +235,22 @@ export default function AlertsApp() {
     let alive = true;
     const run = () => {
       void load(scanBox, active).then((out) => {
-        if (!alive || !notify) return;
-        const fresh = out.filter((a) => a.level === "critico" && !seenRef.current.has(a.id));
-        if (fresh.length) {
-          setSeen((s) => new Set([...s, ...fresh.map((a) => a.id)]));
-          bus.emit("notify", {
-            title: `${fresh.length} alerta(s) crítico(s)${active ? ` · ${active.name}` : ""}`,
-            message: fresh.slice(0, 3).map((a) => a.title).join(" · "),
-            level: "error",
-          });
-        }
+        if (!alive) return;
+        // Novos alertas relevantes (críticos e altos) disparam som + notificação.
+        const fresh = out.filter(
+          (a) => (a.level === "critico" || a.level === "alto") && !seenRef.current.has(a.id),
+        );
+        if (!fresh.length) return;
+        setSeen((s) => new Set([...s, ...fresh.map((a) => a.id)]));
+        const critical = fresh.filter((a) => a.level === "critico");
+        if (soundRef.current) playAlertSound(critical.length ? "critico" : "alto");
+        if (!notify) return;
+        const shown = critical.length ? critical : fresh;
+        bus.emit("notify", {
+          title: `${shown.length} alerta(s) ${critical.length ? "crítico(s)" : "de risco alto"}${active ? ` · ${active.name}` : ""}`,
+          message: shown.slice(0, 3).map((a) => a.title).join(" · "),
+          level: critical.length ? "error" : "warning",
+        });
       });
     };
     run();
@@ -252,6 +258,7 @@ export default function AlertsApp() {
     return () => { alive = false; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanKey, notify]);
+
 
   const counts = useMemo(() => ({
     critico: alerts.filter((a) => a.level === "critico").length,
