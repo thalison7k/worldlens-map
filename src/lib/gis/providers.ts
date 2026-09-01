@@ -13,18 +13,16 @@ export const BASE_PROVIDERS: Record<string, TileProvider> = {
   light: {
     id: "light",
     label: "Light",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: "© OpenStreetMap © CARTO",
-    maxZoom: 20,
-    subdomains: "abcd",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap contributors",
+    maxZoom: 19,
   },
   dark: {
     id: "dark",
     label: "Dark",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: "© OpenStreetMap © CARTO",
-    maxZoom: 20,
-    subdomains: "abcd",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "© OpenStreetMap contributors",
+    maxZoom: 19,
   },
   satellite: {
     id: "satellite",
@@ -45,17 +43,6 @@ export const BASE_PROVIDERS: Record<string, TileProvider> = {
   },
 };
 
-/** Overlay used for the "Hybrid" view (labels + roads on top of imagery). */
-export const HYBRID_OVERLAY: TileProvider = {
-  id: "hybrid-overlay",
-  label: "Rótulos",
-  url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png",
-  attribution: "© OpenStreetMap © CARTO",
-  maxZoom: 20,
-  subdomains: "abcd",
-  overlay: true,
-};
-
 export type BaseView =
   | "street"
   | "light"
@@ -65,6 +52,8 @@ export type BaseView =
   | "hybrid";
 
 export function resolveBase(view: BaseView): { base: TileProvider; overlay?: TileProvider } {
-  if (view === "hybrid") return { base: BASE_PROVIDERS.satellite, overlay: HYBRID_OVERLAY };
+  // A antiga sobreposição híbrida CARTO passou a exigir chave. Mantemos a
+  // imagem Sentinel-2 limpa, sem solicitar nenhum tile restrito.
+  if (view === "hybrid") return { base: BASE_PROVIDERS.satellite };
   return { base: BASE_PROVIDERS[view] };
 }
