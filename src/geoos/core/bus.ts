@@ -53,6 +53,12 @@ export type GeoOSEvents = {
   /** Modo globo: recorta o mapa em esfera navegável (usado pela linha do tempo). */
   "map.globe": { on: boolean };
   "analysis.result": { region: string; metrics: Record<string, string | number> };
+  /** Local monitorado ativo mudou (compartilhado entre Dashboard e Alertas). */
+  "watch.change": {
+    id: string | null;
+    list: { id: string; name: string; lat: number; lng: number; radiusKm: number }[];
+  };
+
 };
 
 export const bus = mitt<GeoOSEvents>();
