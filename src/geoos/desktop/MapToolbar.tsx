@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
+import { EXPORT_FORMATS, EXPORT_LABEL, exportArea, type ExportFormat } from "@/lib/gis/export";
+import { getMapSnapshot } from "@/geoos/core/map-state";
+import type { BBox } from "@/lib/gis/simulated";
 
 /**
  * MapToolbar — barra flutuante de ferramentas SIG que se comunica com o
@@ -14,6 +17,9 @@ export function MapToolbar() {
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
+  const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = window.localStorage.getItem("geoos.sigbar.collapsed");
@@ -35,6 +41,7 @@ export function MapToolbar() {
   useBus("map.click", (p) => setClicked(p));
   useBus("map.bbox", (b) => {
     setZoom(b.zoom);
+    setBbox([b.west, b.south, b.east, b.north]);
     // mobile has no hover cursor: fall back to the viewport center
     if (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) {
       setCursor({ lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 });
@@ -54,6 +61,25 @@ export function MapToolbar() {
   useEffect(() => {
     if (measure === "off") setResult(null);
   }, [measure]);
+
+  const runExport = async (format: ExportFormat) => {
+    if (exporting) return;
+    setExporting(true);
+    setExportOpen(false);
+    bus.emit("notify", { title: "Exportando…", message: `Coletando dados da área visível (${EXPORT_LABEL[format]})`, level: "info" });
+    try {
+      const n = await exportArea(bbox, format, { zoom });
+      bus.emit("notify", {
+        title: n ? "Export concluído" : "Sem dados na área",
+        message: n ? `${n} registros em ${EXPORT_LABEL[format]}` : "Nenhum dado ambiental na área visível — aproxime ou ative camadas.",
+        level: n ? "success" : "warn",
+      });
+    } catch (e) {
+      bus.emit("notify", { title: "Falha no export", message: (e as Error)?.message ?? "erro desconhecido", level: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); bus.emit("notify", { title: "Copiado", message: text, level: "success" }); } catch { /* */ }
