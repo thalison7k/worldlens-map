@@ -70,7 +70,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       zoomSnap: isMobile ? 0.5 : 0.25,
     });
     mapRef.current = map;
-    L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+    // Sem controle de atribuição: nenhuma marca d'água sobre o mapa.
+    applyDLSS(map.getContainer(), dlssRef.current);
 
     const emitBbox = () => {
       const b = map.getBounds();
