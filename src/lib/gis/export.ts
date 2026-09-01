@@ -76,59 +76,67 @@ export async function collectExportPoints(bbox: BBox): Promise<ExportPoint[]> {
     if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) out.push(p);
   };
 
-  for (const q of quakes as Array<Record<string, unknown>>) {
-    const lat = Number(q.lat), lng = Number(q.lng);
-    if (!inBox(bbox, lat, lng)) continue;
+  for (const q of quakes) {
+    if (!inBox(bbox, q.lat, q.lng)) continue;
     push({
-      lat, lng, layer: "earthquakes", name: String(q.place ?? "Sismo"),
-      value: Number(q.mag), unit: "M", time: q.time ? new Date(Number(q.time)).toISOString() : undefined,
-      props: { depthKm: q.depth, source: "USGS" },
+      lat: q.lat, lng: q.lng, layer: "earthquakes", name: q.place || "Sismo",
+      value: q.mag, unit: "M", time: new Date(q.time).toISOString(),
+      props: { depthKm: q.depthKm, url: q.url, source: "USGS" },
     });
   }
-  for (const s of air as Array<Record<string, unknown>>) {
+  for (const s of air) {
     push({
-      lat: Number(s.lat), lng: Number(s.lng), layer: "air_quality",
-      name: String(s.name ?? "Estação de ar"), value: Number(s.pm25 ?? s.value ?? NaN),
-      unit: "µg/m³ PM2.5", props: { aqi: s.aqi, source: "Open-Meteo/OpenAQ" },
+      lat: s.lat, lng: s.lng, layer: "air_quality",
+      name: [s.city, s.country].filter(Boolean).join(" / ") || "Estação de ar",
+      value: s.value, unit: s.unit || "µg/m³",
+      time: s.updated ? new Date(s.updated).toISOString() : undefined,
+      props: { parameter: s.parameter, aqi: s.aqi, pm10: s.pm10, o3: s.o3, no2: s.no2, source: "Open-Meteo/OpenAQ" },
     });
   }
-  for (const w of weather as Array<Record<string, unknown>>) {
+  for (const w of weather) {
     push({
-      lat: Number(w.lat), lng: Number(w.lng), layer: "weather",
-      name: "Leitura meteorológica", value: Number(w.temp ?? NaN), unit: "°C",
-      props: { humidity: w.humidity, wind: w.wind, precip: w.precip, source: "Open-Meteo" },
+      lat: w.lat, lng: w.lng, layer: "weather", name: w.city || "Leitura meteorológica",
+      value: w.temp, unit: "°C",
+      props: {
+        feels: w.feels, humidity: w.humidity, windSpeed: w.windSpeed, windDir: w.windDir,
+        gust: w.gust, pressure: w.pressure, uv: w.uv, cloud: w.cloud, source: "Open-Meteo",
+      },
     });
   }
-  for (const f of fires as Array<Record<string, unknown>>) {
+  for (const f of fires) {
     push({
-      lat: Number(f.lat), lng: Number(f.lng), layer: "fires", name: "Foco de calor",
-      value: Number(f.frp ?? NaN), unit: "MW FRP", time: String(f.acq ?? f.time ?? ""),
-      props: { confidence: f.confidence, satellite: f.satellite, source: "NASA FIRMS/INPE" },
+      lat: f.lat, lng: f.lng, layer: "fires", name: "Foco de calor",
+      value: f.frp, unit: "MW FRP", time: `${f.date} ${f.time}`.trim(),
+      props: { brightness: f.brightness, confidence: f.confidence, satellite: f.satellite, source: "NASA FIRMS/INPE" },
     });
   }
-  for (const c of cyclones as Array<Record<string, unknown>>) {
-    const lat = Number(c.lat), lng = Number(c.lng);
-    if (!inBox(bbox, lat, lng)) continue;
+  for (const c of cyclones) {
+    if (!inBox(bbox, c.lat, c.lng)) continue;
     push({
-      lat, lng, layer: "cyclones", name: String(c.name ?? "Ciclone"),
-      value: Number(c.windKt ?? NaN), unit: "kt",
-      props: { pressure: c.pressure, basin: c.basin, source: "NOAA NHC/GDACS" },
+      lat: c.lat, lng: c.lng, layer: "cyclones", name: c.name || "Ciclone",
+      value: c.intensityKt ?? undefined, unit: "kt", time: c.lastUpdate ?? undefined,
+      props: {
+        classification: c.classification, basin: c.basin, pressureMb: c.pressureMb,
+        movementDir: c.movementDir, movementSpeedKt: c.movementSpeedKt, source: c.source ?? "NOAA NHC/GDACS",
+      },
     });
   }
-  for (const f of floods as Array<Record<string, unknown>>) {
+  for (const f of floods) {
     push({
-      lat: Number(f.lat), lng: Number(f.lng), layer: "flood_risk", name: "Risco de enchente",
-      value: Number(f.score ?? NaN), unit: "0-100",
-      props: { level: f.level, precip72h: f.precip72h, source: "Open-Meteo GloFAS" },
+      lat: f.lat, lng: f.lng, layer: "flood_risk", name: `Risco de enchente (${f.level})`,
+      value: f.risk, unit: "0-100",
+      props: { rain24: f.rain24, rain72: f.rain72, rainPeak: f.rainPeak, discharge: f.discharge, source: "Open-Meteo GloFAS" },
     });
   }
-  for (const r of iot as Array<Record<string, unknown>>) {
-    const lat = Number(r.lat), lng = Number(r.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+  for (const r of iot) {
     push({
-      lat, lng, layer: "iot_sensors", name: String(r.device_id ?? "Sensor IoT"),
-      value: Number(r.value ?? NaN), unit: String(r.unit ?? ""),
-      time: String(r.created_at ?? ""), props: { metric: r.metric, source: "Lovable Cloud" },
+      lat: r.lat, lng: r.lng, layer: "iot_sensors",
+      name: r.device_label || r.device_id, value: r.temperature_c ?? r.air_pm25 ?? undefined,
+      unit: r.temperature_c != null ? "°C" : r.air_pm25 != null ? "µg/m³" : "",
+      props: {
+        kind: r.device_kind, platform: r.platform, battery: r.battery_pct,
+        network: r.network_type, accuracy_m: r.accuracy_m, source: "Lovable Cloud",
+      },
     });
   }
   return out;
