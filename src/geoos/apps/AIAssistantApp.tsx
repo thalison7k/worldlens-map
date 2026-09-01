@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
@@ -15,6 +15,14 @@ import {
   SUMMARIZE_AFTER,
 } from "./chat-memory";
 import type { BBox } from "@/lib/gis/simulated";
+import {
+  EXPORT_FORMATS,
+  EXPORT_LABEL,
+  downloadFile,
+  serializePoints,
+  collectExportPoints,
+  type ExportFormat,
+} from "@/lib/gis/export";
 
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean; ts: number };
@@ -188,14 +196,12 @@ export default function AIAssistantApp() {
         const { recent } = splitForMemory(
           history.map((m) => ({ role: m.role, content: m.content })),
         );
+        const systemPrompt = `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`;
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
           signal: controller.signal,
-          body: JSON.stringify({
-            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
-            messages: recent,
-          }),
+          body: JSON.stringify({ system: systemPrompt, messages: recent }),
         });
 
 
@@ -225,7 +231,24 @@ export default function AIAssistantApp() {
           setStream(acc);
         }
 
-        const answer = acc.trim();
+        let answer = acc.trim();
+
+        // Alguns proxies/navegadores bufferizam ou cortam o stream: nesse caso
+        // refazemos a chamada em modo não-streaming antes de desistir.
+        if (!answer) {
+          const retry = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              stream: false,
+              system: systemPrompt,
+              messages: recent,
+            }),
+          });
+          const data = (await retry.json().catch(() => null)) as { text?: string } | null;
+          answer = (data?.text ?? "").trim();
+        }
         if (!answer) {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
