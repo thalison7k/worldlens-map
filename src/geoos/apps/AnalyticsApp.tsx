@@ -282,3 +282,15 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     </div>
   );
 }
+
+/** Download local de um texto gerado (CSV/JSON). */
+function dl(name: string, body: string, mime: string) {
+  const url = URL.createObjectURL(new Blob(["\ufeff", body], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
