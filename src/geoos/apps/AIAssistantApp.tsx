@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download, Volume2, VolumeX } from "lucide-react";
+import { isVoiceEnabled, setVoiceEnabled, speak, speechSupported, speechText, stopSpeech } from "@/geoos/core/speech";
+
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
