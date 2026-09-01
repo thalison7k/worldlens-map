@@ -157,7 +157,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       maxNativeZoom: cfg.maxZoom ?? 19,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
-      subdomains: cfg.subdomains as unknown as string[] | string | undefined,
+      // `subdomains: undefined` sobrescreveria o padrão do Leaflet e quebraria
+      // `_getSubdomain` (tiles inválidos / marca d'água do provedor).
+      ...(cfg.subdomains ? { subdomains: cfg.subdomains } : {}),
     }).addTo(map);
     if (overlay) {
       overlayRef.current = safeTileLayer(overlay.url, {
@@ -165,10 +167,11 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
         maxNativeZoom: overlay.maxZoom ?? 19,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
-        subdomains: overlay.subdomains as unknown as string[] | string | undefined,
+        ...(overlay.subdomains ? { subdomains: overlay.subdomains } : {}),
         pane: "overlayPane",
       }).addTo(map);
     }
+
   }, [base]);
 
   // helpers: build/destroy a layer by id

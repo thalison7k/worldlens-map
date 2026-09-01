@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const body = (await request.json().catch(() => null)) as
-          | { messages?: ChatMsg[]; system?: string }
+          | { messages?: ChatMsg[]; system?: string; stream?: boolean }
           | null;
         if (!body) return json({ error: "Corpo da requisição inválido (JSON malformado)." }, 400);
 
@@ -52,9 +52,18 @@ export const Route = createFileRoute("/api/chat")({
         });
 
         try {
+          const system = systemParts.length ? { system: systemParts.join("\n\n") } : {};
+
+          // Fallback sem streaming: usado pelo cliente quando o stream chega
+          // vazio (proxies/navegadores que bufferizam a resposta).
+          if (body.stream === false) {
+            const out = await generateText({ model: gateway(MODEL), ...system, messages });
+            return json({ text: out.text });
+          }
+
           const result = streamText({
             model: gateway(MODEL),
-            ...(systemParts.length ? { system: systemParts.join("\n\n") } : {}),
+            ...system,
             messages,
             abortSignal: request.signal,
             onError: ({ error }) => console.error("[api/chat] erro no stream:", error),
@@ -67,6 +76,7 @@ export const Route = createFileRoute("/api/chat")({
               "x-accel-buffering": "no",
             },
           });
+
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           const status = /429|rate limit/i.test(msg)

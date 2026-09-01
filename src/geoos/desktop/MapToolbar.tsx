@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
+import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { useCollisionFreeSpot, useSafeBottomVar } from "./useCollisionFreeSpot";
+import { EXPORT_FORMATS, EXPORT_LABEL, exportArea, type ExportFormat } from "@/lib/gis/export";
+import { getMapSnapshot } from "@/geoos/core/map-state";
+import type { BBox } from "@/lib/gis/simulated";
 
 /**
  * MapToolbar — barra flutuante de ferramentas SIG que se comunica com o
@@ -14,6 +17,9 @@ export function MapToolbar() {
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
+  const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = window.localStorage.getItem("geoos.sigbar.collapsed");
@@ -35,6 +41,7 @@ export function MapToolbar() {
   useBus("map.click", (p) => setClicked(p));
   useBus("map.bbox", (b) => {
     setZoom(b.zoom);
+    setBbox([b.west, b.south, b.east, b.north]);
     // mobile has no hover cursor: fall back to the viewport center
     if (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) {
       setCursor({ lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 });
@@ -54,6 +61,25 @@ export function MapToolbar() {
   useEffect(() => {
     if (measure === "off") setResult(null);
   }, [measure]);
+
+  const runExport = async (format: ExportFormat) => {
+    if (exporting) return;
+    setExporting(true);
+    setExportOpen(false);
+    bus.emit("notify", { title: "Exportando…", message: `Coletando dados da área visível (${EXPORT_LABEL[format]})`, level: "info" });
+    try {
+      const n = await exportArea(bbox, format, { zoom });
+      bus.emit("notify", {
+        title: n ? "Export concluído" : "Sem dados na área",
+        message: n ? `${n} registros em ${EXPORT_LABEL[format]}` : "Nenhum dado ambiental na área visível — aproxime ou ative camadas.",
+        level: n ? "success" : "warn",
+      });
+    } catch (e) {
+      bus.emit("notify", { title: "Falha no export", message: (e as Error)?.message ?? "erro desconhecido", level: "error" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); bus.emit("notify", { title: "Copiado", message: text, level: "success" }); } catch { /* */ }
@@ -111,12 +137,38 @@ export function MapToolbar() {
               <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
                 <Camera className="h-3.5 w-3.5" />
               </ToolBtn>
-              <ToolBtn title="Exportar GeoJSON" onClick={() => bus.emit("map.export", { format: "geojson" })}>
-                <Download className="h-3.5 w-3.5" />
-              </ToolBtn>
-              <ToolBtn title="Exportar CSV" onClick={() => bus.emit("map.export", { format: "csv" })}>
-                <Download className="h-3.5 w-3.5 rotate-90" />
-              </ToolBtn>
+              <div className="relative">
+                <ToolBtn
+                  title="Exportar dados da área visível"
+                  active={exportOpen}
+                  onClick={() => setExportOpen((v) => !v)}
+                >
+                  {exporting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                </ToolBtn>
+                {exportOpen && (
+                  <div className="absolute left-9 top-0 z-40 w-40 rounded-lg border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1 shadow-xl backdrop-blur-xl duration-200 animate-in fade-in slide-in-from-left-2">
+                    <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-white/40">
+                      Exportar dados
+                    </p>
+                    {EXPORT_FORMATS.map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        disabled={exporting}
+                        onClick={() => void runExport(f)}
+                        className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+                      >
+                        {EXPORT_LABEL[f]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <span className="my-0.5 h-px w-4 bg-white/10" />
               <Compass className="h-3.5 w-3.5 text-white/50 transition-transform duration-500 hover:rotate-180" />
             </div>

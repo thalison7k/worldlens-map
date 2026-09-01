@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
@@ -15,6 +15,14 @@ import {
   SUMMARIZE_AFTER,
 } from "./chat-memory";
 import type { BBox } from "@/lib/gis/simulated";
+import {
+  EXPORT_FORMATS,
+  EXPORT_LABEL,
+  downloadFile,
+  serializePoints,
+  collectExportPoints,
+  type ExportFormat,
+} from "@/lib/gis/export";
 
 
 type Msg = { role: "user" | "assistant"; content: string; error?: boolean; ts: number };
@@ -93,6 +101,8 @@ export default function AIAssistantApp() {
   const [zoom, setZoom] = useState(snap.zoom);
   const [layers, setLayers] = useState<Record<string, number>>(snap.layers);
   const [hasMemory, setHasMemory] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const summaryRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -188,14 +198,12 @@ export default function AIAssistantApp() {
         const { recent } = splitForMemory(
           history.map((m) => ({ role: m.role, content: m.content })),
         );
+        const systemPrompt = `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`;
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
           signal: controller.signal,
-          body: JSON.stringify({
-            system: `${SYSTEM_PROMPT}\n\nIDS DE CAMADAS DISPONÍVEIS: ${REAL_LAYER_DEFS.map((d) => d.id).join(", ")}${memoryBlock(summaryRef.current)}\n\n=== DOSSIÊ DE DADOS (fonte única de verdade) ===\n${dossier}`,
-            messages: recent,
-          }),
+          body: JSON.stringify({ system: systemPrompt, messages: recent }),
         });
 
 
@@ -225,7 +233,24 @@ export default function AIAssistantApp() {
           setStream(acc);
         }
 
-        const answer = acc.trim();
+        let answer = acc.trim();
+
+        // Alguns proxies/navegadores bufferizam ou cortam o stream: nesse caso
+        // refazemos a chamada em modo não-streaming antes de desistir.
+        if (!answer) {
+          const retry = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              stream: false,
+              system: systemPrompt,
+              messages: recent,
+            }),
+          });
+          const data = (await retry.json().catch(() => null)) as { text?: string } | null;
+          answer = (data?.text ?? "").trim();
+        }
         if (!answer) {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
@@ -273,6 +298,36 @@ export default function AIAssistantApp() {
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
 
+  // Exporta a análise + os dados brutos da área visível no formato escolhido.
+  const exportAnalysis = useCallback(
+    async (format: ExportFormat) => {
+      setExportOpen(false);
+      setExporting(true);
+      try {
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        const transcript = messages
+          .map((m) => `${m.role === "user" ? "Pergunta" : "Geo AI"}:\n${m.content}`)
+          .join("\n\n---\n\n");
+        if (format === "md") {
+          const body = `# Geo AI — análise ambiental\n\n_${new Date().toLocaleString("pt-BR")} · centro ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)} · zoom ${zoom}_\n\nCamadas ativas: ${
+            activeLayers.map((l) => `${l.label} (${l.count})`).join(", ") || "nenhuma"
+          }\n\n${transcript}\n`;
+          downloadFile(`geoai-analise-${stamp}.md`, body, "md");
+        } else {
+          const points = await collectExportPoints(bbox);
+          const meta = { bbox, center, zoom, layers: activeLayers, transcript };
+          const body = serializePoints(points, format, meta);
+          downloadFile(`geoai-analise-${stamp}.${format}`, body, format);
+        }
+      } catch (e) {
+        console.error("[GeoAI] falha ao exportar", e);
+      } finally {
+        setExporting(false);
+      }
+    },
+    [messages, bbox, center, zoom, activeLayers],
+  );
+
   return (
     <div className="flex h-full flex-col text-white">
       <div className="flex items-start justify-between gap-2 border-b border-white/10 px-4 py-3">
@@ -288,6 +343,32 @@ export default function AIAssistantApp() {
           </p>
         </div>
         {messages.length > 0 && (
+          <div className="relative flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setExportOpen((v) => !v)}
+              title="Exportar análise e dados"
+              aria-label="Exportar análise e dados"
+              className="grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border border-white/10 text-white/60 transition active:scale-95 hover:bg-white/10 hover:text-white disabled:opacity-40"
+              disabled={exporting}
+            >
+              <Download className={`h-4 w-4 ${exporting ? "animate-pulse" : ""}`} />
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-11 z-40 w-40 rounded-lg border border-white/10 bg-[color:var(--geoos-surface)]/95 p-1 shadow-xl backdrop-blur-xl">
+                <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-white/40">Exportar</p>
+                {EXPORT_FORMATS.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => void exportAnalysis(f)}
+                    className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
+                  >
+                    {EXPORT_LABEL[f]}
+                  </button>
+                ))}
+              </div>
+            )}
           <button
             type="button"
             onClick={() => {
@@ -302,6 +383,7 @@ export default function AIAssistantApp() {
           >
             <Trash2 className="h-4 w-4" />
           </button>
+          </div>
         )}
 
       </div>
