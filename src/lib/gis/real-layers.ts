@@ -356,7 +356,6 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
         // upscaling até z12; acima disso o raster vira um borrão inútil e
         // simplesmente deixa de ser desenhado (sem erro nem tile quebrado).
         maxZoom: 12,
-        attribution: "NASA GIBS · MODIS Terra NDVI",
       });
       tile.addTo(ctx.map);
       return {
@@ -418,7 +417,6 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               // RainViewer publica satélite IR até z10 — acima disso upscaling.
               maxNativeZoom: 10,
               maxZoom: 14,
-              attribution: "RainViewer · nuvens (satélite IR)",
             });
             t.addTo(group);
             cloudTiles.push(t);
@@ -435,7 +433,6 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
               maxNativeZoom: 12,
               maxZoom: 16,
               className: "geoos-rain-frame",
-              attribution: "RainViewer · radar de precipitação",
             });
             t.addTo(group);
             radarFrames.push(t);
