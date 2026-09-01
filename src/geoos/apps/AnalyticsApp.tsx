@@ -111,7 +111,7 @@ export default function AnalyticsApp() {
       {
         name: "Terremotos",
         columns: ["Local", "Magnitude", "Prof. (km)", "Latitude", "Longitude", "Data/hora"],
-        rows: quakes.map((q) => [q.place, q.mag, q.depth, q.lat, q.lng, new Date(q.time).toLocaleString("pt-BR")] as XCell[]),
+        rows: quakes.map((q) => [q.place, q.mag, q.depthKm, q.lat, q.lng, new Date(q.time).toLocaleString("pt-BR")] as XCell[]),
       },
       {
         name: "Qualidade do ar",
