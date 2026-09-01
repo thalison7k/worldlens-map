@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2, Wind, X,
+  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2,
+  Volume2, VolumeX, Wind, X,
 } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
+import { isMuted, playAlertSound, setMuted, unlockAudio } from "@/geoos/core/audio";
 import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
@@ -12,6 +14,7 @@ import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/provider
 import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
 import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Level = "critico" | "alto" | "moderado";
 
