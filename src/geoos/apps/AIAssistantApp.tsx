@@ -369,7 +369,28 @@ export default function AIAssistantApp() {
                 ))}
               </div>
             )}
+          {voiceAvailable && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !voiceOn;
+                setVoiceOn(next);
+                setVoiceEnabled(next);
+                if (next) speak("Voz do Geo AI ativada.");
+              }}
+              title={voiceOn ? "Desativar voz do Geo AI" : "Ativar voz do Geo AI"}
+              aria-label={voiceOn ? "Desativar voz do Geo AI" : "Ativar voz do Geo AI"}
+              className={`grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border transition active:scale-95 ${
+                voiceOn
+                  ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-white"
+                  : "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {voiceOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+          )}
           <button
+
             type="button"
             onClick={() => {
               setMessages([]);
