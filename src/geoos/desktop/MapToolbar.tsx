@@ -21,6 +21,14 @@ export function MapToolbar() {
   const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [dlss, setDlss] = useState<DLSSMode>(() => loadMode());
+  const cycleDlss = () => {
+    const next = nextMode(dlss);
+    setDlss(next);
+    saveMode(next);
+    bus.emit("render.dlss", { mode: next });
+  };
+
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     const saved = window.localStorage.getItem("geoos.sigbar.collapsed");
