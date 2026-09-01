@@ -484,3 +484,27 @@ body { touch-action: manipulation; }
 :root:not(.geoos-no-transition) aside {
   transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
 }
+
+/* ── DLSS 5 — Deep Layer Super Sampling ─────────────────────────────── */
+.leaflet-container[class*="geoos-dlss-"] .leaflet-tile {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.leaflet-container.geoos-dlss-off .leaflet-tile { image-rendering: auto; }
+.leaflet-container.geoos-dlss-balanced .leaflet-tile-pane,
+.leaflet-container.geoos-dlss-quality .leaflet-tile-pane,
+.leaflet-container.geoos-dlss-ultra .leaflet-tile-pane {
+  filter: contrast(calc(1 + var(--geoos-dlss-sharpen, 0) * 0.06))
+          saturate(calc(1 + var(--geoos-dlss-sharpen, 0) * 0.08));
+  transition: filter 240ms ease;
+}
+.leaflet-container.geoos-dlss-quality .leaflet-tile,
+.leaflet-container.geoos-dlss-ultra .leaflet-tile {
+  image-rendering: -webkit-optimize-contrast;
+}
+/* dynamic resolution: durante o gesto reduz custo de composição */
+.leaflet-container[class*="geoos-dlss-"].geoos-interacting .leaflet-tile-pane {
+  filter: none;
+  image-rendering: auto;
+}
+.leaflet-container.geoos-dlss-ultra .leaflet-overlay-pane { will-change: transform; }
