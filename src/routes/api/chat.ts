@@ -52,9 +52,18 @@ export const Route = createFileRoute("/api/chat")({
         });
 
         try {
+          const system = systemParts.length ? { system: systemParts.join("\n\n") } : {};
+
+          // Fallback sem streaming: usado pelo cliente quando o stream chega
+          // vazio (proxies/navegadores que bufferizam a resposta).
+          if (body.stream === false) {
+            const out = await generateText({ model: gateway(MODEL), ...system, messages });
+            return json({ text: out.text });
+          }
+
           const result = streamText({
             model: gateway(MODEL),
-            ...(systemParts.length ? { system: systemParts.join("\n\n") } : {}),
+            ...system,
             messages,
             abortSignal: request.signal,
             onError: ({ error }) => console.error("[api/chat] erro no stream:", error),
@@ -67,6 +76,7 @@ export const Route = createFileRoute("/api/chat")({
               "x-accel-buffering": "no",
             },
           });
+
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           const status = /429|rate limit/i.test(msg)
