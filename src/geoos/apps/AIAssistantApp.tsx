@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download, Volume2, VolumeX } from "lucide-react";
+import { isVoiceEnabled, setVoiceEnabled, speak, speechSupported, speechText, stopSpeech } from "@/geoos/core/speech";
+
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { buildGeoContext } from "@/lib/gis/geo-context";
@@ -103,6 +105,14 @@ export default function AIAssistantApp() {
   const [hasMemory, setHasMemory] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Voz (TTS) para tomada de decisão em campo.
+  const [voiceAvailable] = useState(() => speechSupported());
+  const [voiceOn, setVoiceOn] = useState(() => isVoiceEnabled());
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const voiceRef = useRef(voiceOn);
+  voiceRef.current = voiceOn;
+  useEffect(() => () => stopSpeech(), []);
+
   const summaryRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -255,6 +265,9 @@ export default function AIAssistantApp() {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
           push({ role: "assistant", content: answer });
+          // Leitura por voz da decisão (resumo, riscos e recomendações).
+          if (voiceRef.current) speak(speechText(answer, { onlyDecision: true }));
+
 
           // Memória: persiste e atualiza o resumo incremental em segundo plano.
           const full = [
@@ -369,7 +382,28 @@ export default function AIAssistantApp() {
                 ))}
               </div>
             )}
+          {voiceAvailable && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !voiceOn;
+                setVoiceOn(next);
+                setVoiceEnabled(next);
+                if (next) speak("Voz do Geo AI ativada.");
+              }}
+              title={voiceOn ? "Desativar voz do Geo AI" : "Ativar voz do Geo AI"}
+              aria-label={voiceOn ? "Desativar voz do Geo AI" : "Ativar voz do Geo AI"}
+              className={`grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-md border transition active:scale-95 ${
+                voiceOn
+                  ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-white"
+                  : "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {voiceOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+          )}
           <button
+
             type="button"
             onClick={() => {
               setMessages([]);
@@ -421,10 +455,27 @@ export default function AIAssistantApp() {
           >
             {m.error && <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
             {m.role === "assistant" && !m.error ? (
-              <GeoAnswer text={m.content} />
+              <div className="min-w-0 flex-1">
+                <GeoAnswer text={m.content} />
+                {voiceAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (speakingIdx === i) { stopSpeech(); setSpeakingIdx(null); return; }
+                      setSpeakingIdx(i);
+                      speak(speechText(m.content), { onEnd: () => setSpeakingIdx(null) });
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 text-[10px] text-white/60 transition hover:bg-white/10 hover:text-white"
+                  >
+                    {speakingIdx === i ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                    {speakingIdx === i ? "Parar leitura" : "Ouvir análise"}
+                  </button>
+                )}
+              </div>
             ) : (
               <span className="whitespace-pre-wrap">{m.content}</span>
             )}
+
           </div>
         ))}
 

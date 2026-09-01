@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2, Wind, X,
+  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2,
+  Volume2, VolumeX, Wind, X,
 } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
+import { isMuted, playAlertSound, setMuted, unlockAudio } from "@/geoos/core/audio";
 import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
@@ -12,6 +14,7 @@ import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/provider
 import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
 import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Level = "critico" | "alto" | "moderado";
 
@@ -96,6 +99,11 @@ export default function AlertsApp() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [notify, setNotify] = useState(true);
+  const [sound, setSound] = useState(() => !isMuted());
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
+
+
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
@@ -230,16 +238,22 @@ export default function AlertsApp() {
     let alive = true;
     const run = () => {
       void load(scanBox, active).then((out) => {
-        if (!alive || !notify) return;
-        const fresh = out.filter((a) => a.level === "critico" && !seenRef.current.has(a.id));
-        if (fresh.length) {
-          setSeen((s) => new Set([...s, ...fresh.map((a) => a.id)]));
-          bus.emit("notify", {
-            title: `${fresh.length} alerta(s) crítico(s)${active ? ` · ${active.name}` : ""}`,
-            message: fresh.slice(0, 3).map((a) => a.title).join(" · "),
-            level: "error",
-          });
-        }
+        if (!alive) return;
+        // Novos alertas relevantes (críticos e altos) disparam som + notificação.
+        const fresh = out.filter(
+          (a) => (a.level === "critico" || a.level === "alto") && !seenRef.current.has(a.id),
+        );
+        if (!fresh.length) return;
+        setSeen((s) => new Set([...s, ...fresh.map((a) => a.id)]));
+        const critical = fresh.filter((a) => a.level === "critico");
+        if (soundRef.current) playAlertSound(critical.length ? "critico" : "alto");
+        if (!notify) return;
+        const shown = critical.length ? critical : fresh;
+        bus.emit("notify", {
+          title: `${shown.length} alerta(s) ${critical.length ? "crítico(s)" : "de risco alto"}${active ? ` · ${active.name}` : ""}`,
+          message: shown.slice(0, 3).map((a) => a.title).join(" · "),
+          level: critical.length ? "error" : "warn",
+        });
       });
     };
     run();
@@ -247,6 +261,7 @@ export default function AlertsApp() {
     return () => { alive = false; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanKey, notify]);
+
 
   const counts = useMemo(() => ({
     critico: alerts.filter((a) => a.level === "critico").length,
@@ -306,6 +321,17 @@ export default function AlertsApp() {
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
+            onClick={() => { unlockAudio(); const next = !sound; setSound(next); setMuted(!next); if (next) playAlertSound("ok"); }}
+            title={sound ? "Silenciar som dos alertas" : "Ativar som dos alertas"}
+            aria-label={sound ? "Silenciar som dos alertas" : "Ativar som dos alertas"}
+            className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-90 ${
+              sound ? "border-emerald-400/60 bg-emerald-400/15 text-white" : "border-white/10 text-white/50"
+            }`}
+          >
+            {sound ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
             onClick={() => setNotify((n) => !n)}
             title={notify ? "Silenciar notificações" : "Ativar notificações"}
             className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-90 ${
@@ -314,6 +340,7 @@ export default function AlertsApp() {
           >
             {notify ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
           </button>
+
           <button
             type="button"
             onClick={() => void load(scanBox, active)}

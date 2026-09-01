@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Download, RefreshCw } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
+import { getMapSnapshot } from "@/geoos/core/map-state";
+import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import { fetchEarthquakes, magColor, type Quake } from "@/lib/gis/providers/usgs";
 import { fetchAirStations, type AirStation } from "@/lib/gis/providers/openaq";
 import { fetchWeather, type WeatherPoint } from "@/lib/gis/providers/openmeteo";
@@ -9,30 +12,54 @@ import type { BBox } from "@/lib/gis/simulated";
 
 /**
  * AnalyticsApp — visualizações em tempo real dos dados carregados.
- * Reage ao bbox do mapa para focar as análises na área observada.
+ * Todos os gráficos são recalculados para a área visível (bbox) do mapa e
+ * podem ser exportados em Excel, Word, CSV ou JSON para relatórios oficiais.
  */
+const inBox = (b: BBox, lat: number, lng: number) =>
+  lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
+
 export default function AnalyticsApp() {
-  const [bbox, setBbox] = useState<BBox>([-90, -60, 90, 60]);
+  const snap = getMapSnapshot();
+  const [bbox, setBbox] = useState<BBox>(snap.bbox ?? [-90, -60, 90, 60]);
   const [quakes, setQuakes] = useState<Quake[]>([]);
   const [air, setAir] = useState<AirStation[]>([]);
   const [weather, setWeather] = useState<WeatherPoint[]>([]);
   const [fires, setFires] = useState<FirePoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatedAt, setUpdatedAt] = useState(Date.now());
+  const [menu, setMenu] = useState(false);
+  const boxRef = useRef(bbox);
+  boxRef.current = bbox;
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
 
+  const load = useCallback(async () => {
+    const b = boxRef.current;
+    setLoading(true);
+    try {
+      const [q, a, w, f] = await Promise.all([
+        fetchEarthquakes("day"),
+        fetchAirStations(b, 100),
+        fetchWeather(b, 24),
+        fetchFires(b, 1),
+      ]);
+      // Recorte espacial: somente eventos dentro da área visível.
+      setQuakes(q.filter((x) => inBox(b, x.lat, x.lng)));
+      setAir(a);
+      setWeather(w);
+      setFires(f);
+      setUpdatedAt(Date.now());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      fetchEarthquakes("day"),
-      fetchAirStations(bbox, 100),
-      fetchWeather(bbox, 24),
-      fetchFires(bbox, 1),
-    ]).then(([q, a, w, f]) => {
-      if (!alive) return;
-      setQuakes(q); setAir(a); setWeather(w); setFires(f);
-    });
-    return () => { alive = false; };
-  }, [bbox.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+    void load().then(() => { if (!alive) return; });
+    const iv = setInterval(() => { if (!document.hidden) void load(); }, 180_000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [bbox.join(","), load]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const magBuckets = useMemo(() => {
     const b = [0, 0, 0, 0, 0, 0];
@@ -71,9 +98,115 @@ export default function AnalyticsApp() {
     [weather],
   );
 
+  const bboxLabel = `${bbox[1].toFixed(1)},${bbox[0].toFixed(1)} → ${bbox[3].toFixed(1)},${bbox[2].toFixed(1)}`;
+
+  const datasets = useCallback(() => {
+    const meta = {
+      Módulo: "Analytics ambiental",
+      "Área analisada (bbox)": bboxLabel,
+      "Gerado em": new Date().toLocaleString("pt-BR"),
+      Fontes: "USGS · OpenAQ · Open-Meteo · NASA FIRMS",
+    };
+    const sheets = [
+      {
+        name: "Terremotos",
+        columns: ["Local", "Magnitude", "Prof. (km)", "Latitude", "Longitude", "Data/hora"],
+        rows: quakes.map((q) => [q.place, q.mag, q.depthKm, q.lat, q.lng, new Date(q.time).toLocaleString("pt-BR")] as XCell[]),
+      },
+      {
+        name: "Qualidade do ar",
+        columns: ["Cidade", "Parâmetro", "Valor", "Unidade", "Latitude", "Longitude"],
+        rows: air.map((s) => [s.city, s.parameter, s.value, s.unit, s.lat, s.lng] as XCell[]),
+      },
+      {
+        name: "Clima",
+        columns: ["Cidade", "Temp (°C)", "Vento (km/h)", "Umidade (%)", "Latitude", "Longitude"],
+        rows: weather.map((w) => [w.city, w.temp, w.windSpeed, w.humidity, w.lat, w.lng] as XCell[]),
+      },
+      {
+        name: "Focos de calor",
+        columns: ["Latitude", "Longitude", "FRP (MW)", "Confiança", "Hora UTC", "Satélite"],
+        rows: fires.map((f) => [f.lat, f.lng, f.frp, f.confidence, f.time, f.satellite ?? "—"] as XCell[]),
+      },
+    ];
+    return { meta, sheets };
+  }, [quakes, air, weather, fires, bboxLabel]);
+
+  const doExport = (fmt: "xls" | "doc" | "csv" | "json") => {
+    setMenu(false);
+    const { meta, sheets } = datasets();
+    const base = `geoos-analytics-${stamp()}`;
+    if (fmt === "xls") return exportExcel(base, sheets, meta);
+    if (fmt === "doc")
+      return exportWord(
+        base,
+        "Relatório de Analytics Ambiental",
+        [
+          { title: "Contexto", paragraphs: Object.entries(meta).map(([k, v]) => `${k}: ${v}`) },
+          ...sheets.map((s) => ({ title: s.name, columns: s.columns, rows: s.rows })),
+        ],
+        `Área analisada ${bboxLabel}`,
+      );
+    if (fmt === "json") {
+      dl(`${base}.json`, JSON.stringify({ meta, sheets }, null, 2), "application/json");
+      return;
+    }
+    const csv = sheets
+      .map((s) => [s.name, s.columns.join(";"), ...s.rows.map((r) => r.map((c) => String(c ?? "")).join(";"))].join("\n"))
+      .join("\n\n");
+    dl(`${base}.csv`, csv, "text/csv;charset=utf-8");
+  };
+
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3 text-white">
-      <ChartCard title={`Terremotos por magnitude · ${quakes.length} total`}>
+      <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+        <div className="min-w-0">
+          <div className="truncate text-[11px] font-semibold">Área visível · {bboxLabel}</div>
+          <div className="text-[10px] text-white/45">
+            {loading ? "Atualizando…" : `Atualizado ${new Date(updatedAt).toLocaleTimeString("pt-BR")}`}
+          </div>
+        </div>
+        <div className="relative flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void load()}
+            title="Atualizar agora"
+            className="grid h-8 w-8 place-items-center rounded-md border border-white/10 text-white/70 transition active:scale-95 hover:bg-white/10"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMenu((m) => !m)}
+            title="Exportar dados"
+            className="grid h-8 w-8 place-items-center rounded-md border border-white/10 text-white/70 transition active:scale-95 hover:bg-white/10"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          {menu && (
+            <div className="absolute right-0 top-9 z-20 w-44 rounded-lg border border-white/10 bg-[#0b1220]/95 p-1 shadow-xl backdrop-blur">
+              {([
+                ["xls", "Excel (.xls)"],
+                ["doc", "Word (.doc)"],
+                ["csv", "CSV (planilha)"],
+                ["json", "JSON (bruto)"],
+              ] as const).map(([f, label]) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => doExport(f)}
+                  className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ChartCard title={`Terremotos por magnitude · ${quakes.length} na área`}>
+
         <ResponsiveContainer width="100%" height={140}>
           <BarChart data={magBuckets}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
@@ -148,4 +281,16 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
       {children}
     </div>
   );
+}
+
+/** Download local de um texto gerado (CSV/JSON). */
+function dl(name: string, body: string, mime: string) {
+  const url = URL.createObjectURL(new Blob(["\ufeff", body], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 }

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import {
   Activity,
+  Download,
+
   Cloud,
   CloudRain,
   CloudSun,
@@ -78,6 +81,8 @@ export default function DashboardApp() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"clima" | "ambiente">("clima");
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+  const [menu, setMenu] = useState(false);
+
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
   useBus("map.layerBuilt", ({ layerId, count }) =>
@@ -174,6 +179,74 @@ export default function DashboardApp() {
     { label: "Nebulosidade", value: `${snap.cloud.toFixed(0)}%`, pct: snap.cloud, icon: CloudSun, hint: snap.cloud > 70 ? "Encoberto" : snap.cloud > 30 ? "Parcial" : "Limpo" },
   ];
 
+  /** Exporta o painel completo (clima + ambiente + previsão) em formatos de escritório. */
+  const doExport = (fmt: "xls" | "doc" | "csv" | "json") => {
+    setMenu(false);
+    const meta = {
+      Local: snap.city,
+      Centro: `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`,
+      "Gerado em": new Date().toLocaleString("pt-BR"),
+      Fontes: "Open-Meteo · CAMS · NASA FIRMS · USGS · GloFAS",
+    };
+    const sheets = [
+      {
+        name: "Condições atuais",
+        columns: ["Indicador", "Valor"],
+        rows: [
+          ["Temperatura (°C)", snap.temp.toFixed(1)],
+          ["Sensação (°C)", snap.feels.toFixed(1)],
+          ["Umidade (%)", snap.humidity.toFixed(0)],
+          ["Vento (km/h)", snap.wind.toFixed(0)],
+          ["Rajadas (km/h)", snap.gust.toFixed(0)],
+          ["Pressão (mb)", snap.pressure.toFixed(0)],
+          ["Índice UV", snap.uv.toFixed(1)],
+          ["Visibilidade (km)", snap.visibility.toFixed(1)],
+          ["Nebulosidade (%)", snap.cloud.toFixed(0)],
+          ["Chuva (mm/h)", snap.precip.toFixed(1)],
+        ] as XCell[][],
+      },
+      {
+        name: "Ambiente",
+        columns: ["Indicador", "Valor", "Detalhe"],
+        rows: envCards.map((c) => [c.label, String(c.value), c.sub] as XCell[]),
+      },
+      {
+        name: "Previsão 7 dias",
+        columns: ["Data", "Mín (°C)", "Máx (°C)", "Prob. chuva (%)"],
+        rows: (fc?.days ?? []).map((d) => [d.date, d.tMin, d.tMax, d.precipProb] as XCell[]),
+      },
+    ];
+    const base = `geoos-dashboard-${stamp()}`;
+    if (fmt === "xls") return exportExcel(base, sheets, meta);
+    if (fmt === "doc")
+      return exportWord(
+        base,
+        "Relatório Ambiental — Central GeoOS",
+        [
+          { title: "Contexto", paragraphs: Object.entries(meta).map(([k, v]) => `${k}: ${v}`) },
+          ...sheets.map((s) => ({ title: s.name, columns: s.columns, rows: s.rows })),
+        ],
+        `${snap.city} · ${new Date().toLocaleString("pt-BR")}`,
+      );
+    const payload =
+      fmt === "json"
+        ? JSON.stringify({ meta, sheets }, null, 2)
+        : sheets
+            .map((s) => [s.name, s.columns.join(";"), ...s.rows.map((r) => r.map((c) => String(c ?? "")).join(";"))].join("\n"))
+            .join("\n\n");
+    const url = URL.createObjectURL(
+      new Blob(["\ufeff", payload], { type: fmt === "json" ? "application/json" : "text/csv;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${base}.${fmt}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  };
+
+
   return (
     <div className="flex h-full flex-col overflow-hidden text-white">
       {/* Header */}
@@ -185,13 +258,41 @@ export default function DashboardApp() {
             {new Date(updatedAt).toLocaleTimeString("pt-BR")}
           </p>
         </div>
-        <button
-          onClick={() => void refresh()}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
-          title="Atualizar agora"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="relative flex shrink-0 items-center gap-1">
+          <button
+            onClick={() => setMenu((m) => !m)}
+            className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
+            title="Exportar relatório"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => void refresh()}
+            className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:bg-white/10"
+            title="Atualizar agora"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          {menu && (
+            <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-white/10 bg-[#0b1220]/95 p-1 shadow-xl backdrop-blur">
+              {([
+                ["xls", "Excel (.xls)"],
+                ["doc", "Word (.doc)"],
+                ["csv", "CSV (planilha)"],
+                ["json", "JSON (bruto)"],
+              ] as const).map(([f, label]) => (
+                <button
+                  key={f}
+                  onClick={() => doExport(f)}
+                  className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] text-white/80 transition hover:bg-white/10"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Tabs */}
