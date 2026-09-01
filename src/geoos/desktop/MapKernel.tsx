@@ -5,6 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import { safeTileLayer, MAP_MAX_ZOOM } from "@/lib/gis/tiles";
+import { applyDLSS, loadMode, superSampling, type DLSSMode } from "@/geoos/core/dlss";
 import "@/geoos/core/map-state";
 import { bus } from "@/geoos/core/bus";
 import { resolveBase, type BaseView } from "@/lib/gis/providers";
