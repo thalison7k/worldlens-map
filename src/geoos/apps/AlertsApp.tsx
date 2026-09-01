@@ -99,6 +99,8 @@ export default function AlertsApp() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [notify, setNotify] = useState(true);
+  const [sound, setSound] = useState(() => !isMuted());
+
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
