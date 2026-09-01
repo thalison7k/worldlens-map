@@ -134,9 +134,17 @@ export function MapToolbar() {
               <ToolBtn title="Tela cheia" onClick={() => bus.emit("map.fullscreen", undefined)}>
                 <Maximize2 className="h-3.5 w-3.5" />
               </ToolBtn>
+              <ToolBtn
+                title={`${DLSS_LABEL[dlss]} — clique para alternar a qualidade de render`}
+                active={dlss !== "off"}
+                onClick={cycleDlss}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </ToolBtn>
               <ToolBtn title="Exportar PNG" onClick={() => bus.emit("map.export", { format: "png" })}>
                 <Camera className="h-3.5 w-3.5" />
               </ToolBtn>
+
               <div className="relative">
                 <ToolBtn
                   title="Exportar dados da área visível"
