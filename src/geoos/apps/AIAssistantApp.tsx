@@ -255,6 +255,9 @@ export default function AIAssistantApp() {
           push({ role: "assistant", content: "O modelo retornou uma resposta vazia. Tente novamente.", error: true });
         } else {
           push({ role: "assistant", content: answer });
+          // Leitura por voz da decisão (resumo, riscos e recomendações).
+          if (voiceRef.current) speak(speechText(answer, { onlyDecision: true }));
+
 
           // Memória: persiste e atualiza o resumo incremental em segundo plano.
           const full = [
