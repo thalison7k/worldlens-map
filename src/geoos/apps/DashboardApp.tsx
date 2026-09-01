@@ -78,6 +78,8 @@ export default function DashboardApp() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<"clima" | "ambiente">("clima");
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+  const [menu, setMenu] = useState(false);
+
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
   useBus("map.layerBuilt", ({ layerId, count }) =>
