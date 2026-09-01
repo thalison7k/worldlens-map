@@ -249,7 +249,7 @@ export default function AlertsApp() {
         bus.emit("notify", {
           title: `${shown.length} alerta(s) ${critical.length ? "crítico(s)" : "de risco alto"}${active ? ` · ${active.name}` : ""}`,
           message: shown.slice(0, 3).map((a) => a.title).join(" · "),
-          level: critical.length ? "error" : "warning",
+          level: critical.length ? "error" : "warn",
         });
       });
     };
