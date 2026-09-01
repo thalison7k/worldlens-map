@@ -155,28 +155,43 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     const { base: cfg, overlay } = resolveBase(base);
     if (baseRef.current) map.removeLayer(baseRef.current);
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
+    const ss = superSampling(dlss);
     baseRef.current = safeTileLayer(cfg.url, {
-      attribution: cfg.attribution,
+      // Sem `attribution`: o mapa não exibe marca d'água de provedor.
       // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
       maxNativeZoom: cfg.maxZoom ?? 19,
       updateWhenIdle: true,
       updateWhenZooming: !isMobile,
+      detectRetina: ss,
+      keepBuffer: dlss === "ultra" ? 4 : 2,
       // `subdomains: undefined` sobrescreveria o padrão do Leaflet e quebraria
       // `_getSubdomain` (tiles inválidos / marca d'água do provedor).
       ...(cfg.subdomains ? { subdomains: cfg.subdomains } : {}),
     }).addTo(map);
     if (overlay) {
       overlayRef.current = safeTileLayer(overlay.url, {
-        attribution: overlay.attribution,
         maxNativeZoom: overlay.maxZoom ?? 19,
         updateWhenIdle: true,
         updateWhenZooming: !isMobile,
+        detectRetina: ss,
         ...(overlay.subdomains ? { subdomains: overlay.subdomains } : {}),
         pane: "overlayPane",
       }).addTo(map);
     }
 
-  }, [base]);
+  }, [base, dlss, isMobile]);
+
+  // DLSS 5 — aplica o modo ao container e reage ao Event Bus
+  useEffect(() => {
+    dlssRef.current = dlss;
+    const map = mapRef.current;
+    if (map) applyDLSS(map.getContainer(), dlss);
+  }, [dlss]);
+  useEffect(() => {
+    const off = bus.on("render.dlss", (p) => setDlss(p.mode));
+    return () => { off(); };
+  }, []);
+
 
   // helpers: build/destroy a layer by id
   const buildLayerKey = (id: string, map: L.Map) => {
