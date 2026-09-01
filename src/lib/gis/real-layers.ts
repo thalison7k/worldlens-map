@@ -336,19 +336,10 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       { color: "#166534", label: "Vegetação densa (> 0.7)" },
     ],
     build: (ctx) => {
-      // GIBS 8-day NDVI (MODIS Terra) — WMTS REST, TileMatrixSet
-      // GoogleMapsCompatible_Level9 (EPSG:3857, níveis 0..8).
-      // A data precisa cair no início de um período de 8 dias do produto,
-      // senão o serviço responde com um tile de erro.
+      // GIBS rolling 8-day NDVI (MODIS Terra) — WMTS REST. O produto é
+      // publicado diariamente com um dia de atraso; não usa buckets fixos.
       const now = new Date();
-      const year = now.getUTCFullYear();
-      const startOfYear = Date.UTC(year, 0, 1);
-      const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86_400_000);
-      // O catálogo pode levar vários dias para publicar o mosaico global.
-      // Usamos três períodos completos de defasagem para nunca requisitar uma
-      // data anunciada no calendário, mas ainda ausente no WMTS.
-      const periodStart = Math.max(0, Math.floor(dayOfYear / 8) * 8 - 24);
-      const iso = new Date(startOfYear + periodStart * 86_400_000).toISOString().slice(0, 10);
+      const iso = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
       const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/${iso}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
       const tile = safeTileLayer(url, {
         opacity: 0.65,
@@ -427,7 +418,9 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
           // Animação: últimos quadros de radar + previsão imediata (nowcast).
           const past = j.radar?.past ?? [];
           const nowcast = j.radar?.nowcast ?? [];
-          const seq = [...past.slice(-8), ...nowcast.slice(0, 3)];
+          // Três quadros mantêm movimento perceptível sem disparar centenas de
+          // downloads simultâneos (o CDN público limita rajadas com HTTP 429).
+          const seq = [...past.slice(-3), ...nowcast.slice(0, 1)];
           seq.forEach((f) => {
             const t = safeTileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/4/1_1.png`, {
               opacity: 0,
