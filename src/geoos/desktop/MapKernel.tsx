@@ -188,8 +188,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     if (map) applyDLSS(map.getContainer(), dlss);
   }, [dlss]);
   useEffect(() => {
-    const off = bus.on("render.dlss", (p) => setDlss(p.mode));
-    return () => { off(); };
+    const handler = (p: { mode: DLSSMode }) => setDlss(p.mode);
+    bus.on("render.dlss", handler);
+    return () => { bus.off("render.dlss", handler); };
   }, []);
 
 
