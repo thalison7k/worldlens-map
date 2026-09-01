@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const body = (await request.json().catch(() => null)) as
-          | { messages?: ChatMsg[]; system?: string }
+          | { messages?: ChatMsg[]; system?: string; stream?: boolean }
           | null;
         if (!body) return json({ error: "Corpo da requisição inválido (JSON malformado)." }, 400);
 
