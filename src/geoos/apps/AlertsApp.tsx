@@ -100,6 +100,9 @@ export default function AlertsApp() {
   const [loading, setLoading] = useState(true);
   const [notify, setNotify] = useState(true);
   const [sound, setSound] = useState(() => !isMuted());
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
+
 
   const [seen, setSeen] = useState<Set<string>>(() => new Set());
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
