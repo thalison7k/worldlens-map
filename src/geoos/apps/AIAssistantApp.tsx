@@ -421,10 +421,27 @@ export default function AIAssistantApp() {
           >
             {m.error && <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
             {m.role === "assistant" && !m.error ? (
-              <GeoAnswer text={m.content} />
+              <div className="min-w-0 flex-1">
+                <GeoAnswer text={m.content} />
+                {voiceAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (speakingIdx === i) { stopSpeech(); setSpeakingIdx(null); return; }
+                      setSpeakingIdx(i);
+                      speak(speechText(m.content), { onEnd: () => setSpeakingIdx(null) });
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 text-[10px] text-white/60 transition hover:bg-white/10 hover:text-white"
+                  >
+                    {speakingIdx === i ? <Square className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                    {speakingIdx === i ? "Parar leitura" : "Ouvir análise"}
+                  </button>
+                )}
+              </div>
             ) : (
               <span className="whitespace-pre-wrap">{m.content}</span>
             )}
+
           </div>
         ))}
 
