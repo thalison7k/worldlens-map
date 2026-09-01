@@ -309,6 +309,17 @@ export default function AlertsApp() {
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
+            onClick={() => { unlockAudio(); const next = !sound; setSound(next); setMuted(!next); if (next) playAlertSound("ok"); }}
+            title={sound ? "Silenciar som dos alertas" : "Ativar som dos alertas"}
+            aria-label={sound ? "Silenciar som dos alertas" : "Ativar som dos alertas"}
+            className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-90 ${
+              sound ? "border-emerald-400/60 bg-emerald-400/15 text-white" : "border-white/10 text-white/50"
+            }`}
+          >
+            {sound ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
             onClick={() => setNotify((n) => !n)}
             title={notify ? "Silenciar notificações" : "Ativar notificações"}
             className={`grid h-8 w-8 place-items-center rounded-full border transition-all active:scale-90 ${
@@ -317,6 +328,7 @@ export default function AlertsApp() {
           >
             {notify ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
           </button>
+
           <button
             type="button"
             onClick={() => void load(scanBox, active)}
