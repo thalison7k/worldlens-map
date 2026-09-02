@@ -235,7 +235,7 @@ export default function AlertsApp() {
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={() => setActiveId(null)}
+            onClick={() => selectWatch(null)}
             className={`rounded-full border px-2.5 py-1 text-[11px] transition-all active:scale-95 ${
               !active
                 ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
@@ -244,6 +244,7 @@ export default function AlertsApp() {
           >
             Área visível
           </button>
+
           {watchpoints.map((w) => (
             <span
               key={w.id}
