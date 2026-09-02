@@ -120,11 +120,7 @@ export default function AlertsApp() {
 
 
 
-  const counts = useMemo(() => ({
-    critico: alerts.filter((a) => a.level === "critico").length,
-    alto: alerts.filter((a) => a.level === "alto").length,
-    moderado: alerts.filter((a) => a.level === "moderado").length,
-  }), [alerts]);
+  const counts = useMemo(() => countByLevel(alerts), [alerts]);
 
   const runSearch = useCallback(async () => {
     const q = query.trim();
@@ -149,13 +145,16 @@ export default function AlertsApp() {
   const addWatch = (name: string, lat: number, lng: number) => {
     const short = name.split(",").slice(0, 2).join(",").trim();
     const wp: Watchpoint = { id: `wp:${Date.now()}`, name: short || name, lat, lng, radiusKm: 25 };
-    setWatchpoints((w) => [...w, wp]);
-    setActiveId(wp.id);
+    const next = [...watchpoints, wp];
+    setWatchpoints(next);
+    saveWatchpoints(next);
+    selectWatch(wp.id);
     setAdding(false);
     setQuery("");
     setResults([]);
     bus.emit("map.flyTo", { lat, lng, zoom: 10 });
   };
+
 
   const addCurrentCenter = async () => {
     const snap = getMapSnapshot();
