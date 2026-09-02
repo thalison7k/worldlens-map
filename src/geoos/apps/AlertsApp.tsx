@@ -256,7 +256,7 @@ export default function AlertsApp() {
             >
               <button
                 type="button"
-                onClick={() => { setActiveId(w.id); bus.emit("map.flyTo", { lat: w.lat, lng: w.lng, zoom: 10 }); }}
+                onClick={() => { selectWatch(w.id); bus.emit("map.flyTo", { lat: w.lat, lng: w.lng, zoom: 10 }); }}
                 className="flex max-w-[150px] items-center gap-1 active:scale-95"
                 title={`Monitorar ${w.name} (raio ${w.radiusKm} km)`}
               >
@@ -267,13 +267,14 @@ export default function AlertsApp() {
                 type="button"
                 title="Remover local"
                 onClick={() => {
-                  setWatchpoints((list) => list.filter((x) => x.id !== w.id));
-                  if (activeId === w.id) setActiveId(null);
+                  updateWatchpoints(watchpoints.filter((x) => x.id !== w.id));
+                  if (activeId === w.id) selectWatch(null);
                 }}
                 className="text-white/35 transition-colors hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
+
             </span>
           ))}
         </div>
