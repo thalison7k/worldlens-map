@@ -42,8 +42,10 @@ export default function AlertsApp() {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   const [watchpoints, setWatchpoints] = useState<Watchpoint[]>(() => loadWatchpoints());
-  const [activeId, setActiveId] = useState<string | null>(() => {
-    try { return localStorage.getItem(ACTIVE_KEY); } catch { return null; }
+  const [activeId, setActiveId] = useState<string | null>(() => loadActiveId());
+  const [refreshMs, setRefreshMs] = useState(() => {
+    const v = Number(localStorage.getItem("geoos.alerts.refreshMs"));
+    return REFRESH_OPTIONS.some((o) => o.ms === v) ? v : 180_000;
   });
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -53,110 +55,30 @@ export default function AlertsApp() {
   seenRef.current = seen;
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
+  // Sincroniza com a Central Ambiental: fixar um local lá vale aqui também.
+  useBus("watch.change", ({ id, list }) => {
+    setWatchpoints(list as Watchpoint[]);
+    setActiveId(id);
+  });
 
   const active = watchpoints.find((w) => w.id === activeId) ?? null;
 
+  const updateWatchpoints = (next: Watchpoint[]) => {
+    setWatchpoints(next);
+    saveWatchpoints(next);
+  };
+  const selectWatch = (id: string | null) => {
+    setActiveId(id);
+    setActiveWatch(id);
+  };
+
   useEffect(() => {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(watchpoints)); } catch { /* noop */ }
-  }, [watchpoints]);
-  useEffect(() => {
-    try {
-      if (activeId) localStorage.setItem(ACTIVE_KEY, activeId);
-      else localStorage.removeItem(ACTIVE_KEY);
-    } catch { /* noop */ }
-  }, [activeId]);
+    try { localStorage.setItem("geoos.alerts.refreshMs", String(refreshMs)); } catch { /* noop */ }
+  }, [refreshMs]);
 
   const load = useCallback(async (box: BBox, focus: Watchpoint | null) => {
     setLoading(true);
-    const [cyclones, fires, quakes, air, floods] = await Promise.all([
-      fetchCyclones().catch(() => []),
-      fetchFires(box, 1).catch(() => []),
-      fetchEarthquakes("day").catch(() => []),
-      fetchAirStations(box, 120).catch(() => []),
-      fetchFloodRisk(box, 4).catch(() => []),
-    ]);
-
-    const out: Alert[] = [];
-
-    for (const s of cyclones) {
-      const { label, cat } = cycloneCategory(s.intensityKt);
-      out.push({
-        id: `cyc:${s.id}`,
-        kind: "ciclone",
-        level: cat >= 3 ? "critico" : cat >= 1 ? "alto" : "moderado",
-        title: `${s.name} · ${label}`,
-        detail: `${s.intensityKt ?? "?"} kt · ${s.pressureMb ?? "?"} hPa · rumo ${bearingLabel(s.movementDir)}`,
-        lat: s.lat, lng: s.lng,
-        when: s.lastUpdate ? new Date(s.lastUpdate).getTime() : Date.now(),
-      });
-    }
-
-    for (const f of fires.filter((f) => f.frp >= 40).slice(0, 12)) {
-      out.push({
-        id: `fire:${f.lat.toFixed(3)}:${f.lng.toFixed(3)}`,
-        kind: "queimada",
-        level: f.frp >= 120 ? "critico" : "alto",
-        title: `Foco de calor · FRP ${f.frp.toFixed(0)} MW`,
-        detail: `Confiança ${f.confidence ?? "n/d"} · ${f.lat.toFixed(2)}, ${f.lng.toFixed(2)}`,
-        lat: f.lat, lng: f.lng,
-        when: Date.now(),
-      });
-    }
-
-    for (const q of quakes.filter((q) => q.mag >= 4 && inside(box, q.lat, q.lng)).slice(0, 12)) {
-      out.push({
-        id: `eq:${q.time}:${q.lat.toFixed(2)}`,
-        kind: "sismo",
-        level: q.mag >= 6 ? "critico" : q.mag >= 5 ? "alto" : "moderado",
-        title: `Sismo M ${q.mag.toFixed(1)}`,
-        detail: `${q.place} · ${q.depthKm.toFixed(0)} km de profundidade`,
-        lat: q.lat, lng: q.lng,
-        when: q.time,
-      });
-    }
-
-    for (const a of air.filter((s) => (s.value ?? 0) >= 35).slice(0, 10)) {
-      const v = a.value ?? 0;
-      out.push({
-        id: `air:${a.lat.toFixed(2)}:${a.lng.toFixed(2)}`,
-        kind: "ar",
-        level: v >= 75 ? "critico" : v >= 55 ? "alto" : "moderado",
-        title: `Ar insalubre · ${a.parameter.toUpperCase()} ${v.toFixed(0)} ${a.unit}`,
-        detail: a.city || `${a.lat.toFixed(2)}, ${a.lng.toFixed(2)}`,
-        lat: a.lat, lng: a.lng,
-        when: a.updated || Date.now(),
-      });
-    }
-
-    for (const f of floods.filter((f) => f.risk >= 32).slice(0, 12)) {
-      out.push({
-        id: f.id,
-        kind: "enchente",
-        level: f.risk >= 75 ? "critico" : f.risk >= 55 ? "alto" : "moderado",
-        title: `Risco de alagamento ${f.risk}/100`,
-        detail: `${FLOOD_LEVEL_LABEL[f.level]} · chuva 72 h ${f.rain72.toFixed(0)} mm${
-          f.dischargeRatio != null ? ` · rio a ${(f.dischargeRatio * 100).toFixed(0)}% da média` : ""
-        }`,
-        lat: f.lat, lng: f.lng,
-        when: f.updated,
-      });
-    }
-
-    let list = out;
-    if (focus) {
-      list = out
-        .map((a) => ({ ...a, km: distKm(focus, a) }))
-        // ciclones entram no raio ampliado — são fenômenos de grande escala
-        .filter((a) => (a.km ?? 0) <= (a.kind === "ciclone" ? Math.max(focus.radiusKm, 800) : focus.radiusKm));
-    }
-
-    const order: Record<Level, number> = { critico: 0, alto: 1, moderado: 2 };
-    list.sort(
-      (x, y) =>
-        order[x.level] - order[y.level] ||
-        (focus ? (x.km ?? 0) - (y.km ?? 0) : 0) ||
-        y.when - x.when,
-    );
+    const list = await buildAlerts(box, focus);
     setAlerts(list);
     setUpdatedAt(Date.now());
     setLoading(false);
@@ -191,10 +113,11 @@ export default function AlertsApp() {
       });
     };
     run();
-    const iv = setInterval(() => { if (!document.hidden) run(); }, REFRESH_MS);
+    const iv = setInterval(() => { if (!document.hidden) run(); }, refreshMs);
     return () => { alive = false; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanKey, notify]);
+  }, [scanKey, notify, refreshMs]);
+
 
 
   const counts = useMemo(() => ({
