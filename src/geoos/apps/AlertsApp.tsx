@@ -1,90 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2,
-  Volume2, VolumeX, Wind, X,
+  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Timer,
+  Trash2, Volume2, VolumeX, Wind, X,
 } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { isMuted, playAlertSound, setMuted, unlockAudio } from "@/geoos/core/audio";
-import { fetchFires } from "@/lib/gis/providers/firms";
-import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
-import { fetchAirStations } from "@/lib/gis/providers/openaq";
-import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/providers/cyclones";
-import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
+import {
+  bboxAround, loadActiveId, loadWatchpoints, saveWatchpoints, setActiveWatch, type Watchpoint,
+} from "@/geoos/core/watchpoints";
+import {
+  buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, REFRESH_OPTIONS,
+  type AlertLevel as Level, type EnvAlert as Alert,
+} from "@/lib/gis/alerts";
 import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import type { BBox } from "@/lib/gis/simulated";
 
-
-type Level = "critico" | "alto" | "moderado";
-
-type Alert = {
-  id: string;
-  kind: "ciclone" | "queimada" | "sismo" | "ar" | "enchente";
-  level: Level;
-  title: string;
-  detail: string;
-  lat: number;
-  lng: number;
-  when: number;
-  km?: number;
-};
-
-/** Local monitorado com foco: município, bairro ou ponto qualquer + raio de vigilância. */
-type Watchpoint = {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  radiusKm: number;
-};
-
-const LEVEL_STYLE: Record<Level, { color: string; label: string }> = {
-  critico: { color: "#dc2626", label: "Crítico" },
-  alto: { color: "#f97316", label: "Alto" },
-  moderado: { color: "#eab308", label: "Moderado" },
-};
-
-const KIND_ICON: Record<Alert["kind"], string> = {
-  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
-};
-
-const REFRESH_MS = 180_000;
-const STORE_KEY = "geoos.alerts.watchpoints";
-const ACTIVE_KEY = "geoos.alerts.activeWatch";
 const RADIUS_OPTIONS = [10, 25, 50, 100, 200];
 
-function inside(b: BBox, lat: number, lng: number) {
-  return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
-}
-
-function distKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
-}
-
-/** BBox que circunscreve o raio de vigilância do local monitorado. */
-function bboxAround(lat: number, lng: number, km: number): BBox {
-  const dLat = km / 111;
-  const dLng = km / (111 * Math.max(0.15, Math.cos((lat * Math.PI) / 180)));
-  return [lng - dLng, lat - dLat, lng + dLng, lat + dLat];
-}
-
-function loadWatchpoints(): Watchpoint[] {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as Watchpoint[];
-    return Array.isArray(arr) ? arr.filter((w) => typeof w?.lat === "number") : [];
-  } catch {
-    return [];
-  }
-}
 
 /**
  * AlertsApp — central de alertas ambientais com foco local.
