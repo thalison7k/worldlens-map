@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import {
   Activity,
+  AlertTriangle,
+  Crosshair,
   Download,
 
   Cloud,
@@ -11,19 +13,32 @@ import {
   Eye,
   Flame,
   Gauge,
+  MapPin,
   Moon,
+  Plus,
   RefreshCw,
+  Search,
+  Star,
   Sun,
   Sunrise,
   Sunset,
   Thermometer,
+  Timer,
+  Trash2,
   Wifi,
   WifiOff,
   Wind,
+  X,
   Zap,
 } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
 import { bus, type ApiStatus } from "@/geoos/core/bus";
+import { getMapSnapshot } from "@/geoos/core/map-state";
+import {
+  bboxAround, loadActiveId, loadWatchpoints, saveWatchpoints, setActiveWatch, type Watchpoint,
+} from "@/geoos/core/watchpoints";
+import { buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, REFRESH_OPTIONS, type EnvAlert } from "@/lib/gis/alerts";
+import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import {
   fetchForecast,
@@ -36,6 +51,7 @@ import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchFloodRisk } from "@/lib/gis/providers/floods";
 
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Snapshot = {
   quakes: number;
@@ -73,7 +89,7 @@ const EMPTY: Snapshot = {
  * (Open-Meteo, USGS, OpenAQ/CAMS, NASA FIRMS) para o bbox atual do MapKernel.
  */
 export default function DashboardApp() {
-  const [bbox, setBbox] = useState<BBox>([-90, -60, 90, 60]);
+  const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
   const [snap, setSnap] = useState<Snapshot>(EMPTY);
   const [fc, setFc] = useState<ForecastBundle | null>(null);
   const [layers, setLayers] = useState<Record<string, number>>({});
@@ -83,28 +99,107 @@ export default function DashboardApp() {
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [menu, setMenu] = useState(false);
 
+  // ---- Localidade compartilhada com a Central de Alertas -------------------
+  const [watchpoints, setWatchpoints] = useState<Watchpoint[]>(() => loadWatchpoints());
+  const [activeId, setActiveId] = useState<string | null>(() => loadActiveId());
+  const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ name: string; lat: number; lng: number }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [alertList, setAlertList] = useState<EnvAlert[]>([]);
+  const [refreshMs, setRefreshMs] = useState(() => {
+    const v = Number(localStorage.getItem("geoos.dashboard.refreshMs"));
+    return REFRESH_OPTIONS.some((o) => o.ms === v) ? v : 60_000;
+  });
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
   useBus("map.layerBuilt", ({ layerId, count }) =>
     setLayers((l) => ({ ...l, [layerId]: count })),
   );
   useBus("api.status", (s) => setApis((m) => ({ ...m, [s.id]: s })));
+  useBus("watch.change", ({ id, list }) => {
+    setWatchpoints(list as Watchpoint[]);
+    setActiveId(id);
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("geoos.dashboard.refreshMs", String(refreshMs)); } catch { /* noop */ }
+  }, [refreshMs]);
+
+  const active = watchpoints.find((w) => w.id === activeId) ?? null;
+  const scanBox: BBox = active ? bboxAround(active.lat, active.lng, active.radiusKm) : bbox;
 
   const center = useMemo(
-    () => ({ lat: (bbox[1] + bbox[3]) / 2, lng: (bbox[0] + bbox[2]) / 2 }),
-    [bbox],
+    () => (active
+      ? { lat: active.lat, lng: active.lng }
+      : { lat: (bbox[1] + bbox[3]) / 2, lng: (bbox[0] + bbox[2]) / 2 }),
+    [active, bbox],
   );
+
+  const updateWatchpoints = (next: Watchpoint[]) => {
+    setWatchpoints(next);
+    saveWatchpoints(next);
+  };
+  const selectWatch = (id: string | null) => {
+    setActiveId(id);
+    setActiveWatch(id);
+  };
+
+  const runSearch = useCallback(async () => {
+    const q = query.trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const coords = parseCoordinates(q);
+      if (coords) {
+        const rev = await reverseGeocode(coords.lat, coords.lng).catch(() => null);
+        setResults([{ name: rev?.displayName ?? `${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}`, ...coords }]);
+      } else {
+        const hits = await searchAddress(q);
+        setResults(hits.slice(0, 6).map((h) => ({ name: h.displayName, lat: h.lat, lng: h.lng })));
+      }
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [query]);
+
+  const addWatch = (name: string, lat: number, lng: number) => {
+    const short = name.split(",").slice(0, 2).join(",").trim();
+    const wp: Watchpoint = { id: `wp:${Date.now()}`, name: short || name, lat, lng, radiusKm: 25 };
+    updateWatchpoints([...watchpoints, wp]);
+    selectWatch(wp.id);
+    setAdding(false);
+    setQuery("");
+    setResults([]);
+    bus.emit("map.flyTo", { lat, lng, zoom: 10 });
+  };
+
+  const addCurrentCenter = async () => {
+    const s = getMapSnapshot();
+    const c = {
+      lat: s.center?.lat ?? (s.bbox[1] + s.bbox[3]) / 2,
+      lng: s.center?.lng ?? (s.bbox[0] + s.bbox[2]) / 2,
+    };
+    const rev = await reverseGeocode(c.lat, c.lng).catch(() => null);
+    const a = rev?.address;
+    const name = a?.city || a?.town || a?.village || rev?.displayName || `${c.lat.toFixed(3)}, ${c.lng.toFixed(3)}`;
+    addWatch(name, c.lat, c.lng);
+  };
 
   const refresh = async () => {
     setLoading(true);
+    const box = scanBox;
     try {
-      const [quakes, weather, air, fires, forecast, floods] = await Promise.all([
+      const [quakes, weather, air, fires, forecast, floods, alertsNow] = await Promise.all([
         fetchEarthquakes("day"),
-        fetchWeather(bbox, 24),
-        fetchAirStations(bbox, 100),
-        fetchFires(bbox, 1),
+        fetchWeather(box, 24),
+        fetchAirStations(box, 100),
+        fetchFires(box, 1),
         fetchForecast(center.lat, center.lng),
-        fetchFloodRisk(bbox, 3).catch(() => []),
+        fetchFloodRisk(box, 3).catch(() => []),
+        buildAlerts(box, active ? { lat: active.lat, lng: active.lng, radiusKm: active.radiusKm } : null).catch(() => [] as EnvAlert[]),
       ]);
 
       const nearest = [...weather].sort(
@@ -128,11 +223,12 @@ export default function DashboardApp() {
         cloud: nearest?.cloud ?? 0,
         precip: nearest?.precipitation ?? 0,
         code: nearest?.code ?? 0,
-        city: nearest?.city ?? "Área visível",
+        city: active?.name ?? nearest?.city ?? "Área visível",
         flood: floods.reduce((m, f) => Math.max(m, f.risk), 0),
         floodCells: floods.filter((f) => f.risk >= 55).length,
 
       });
+      setAlertList(alertsNow);
       setFc(forecast);
       setUpdatedAt(Date.now());
     } finally {
@@ -140,18 +236,24 @@ export default function DashboardApp() {
     }
   };
 
+  const scanKey = active ? `w:${active.id}:${active.radiusKm}` : `v:${bbox.map((v) => Math.round(v)).join(",")}`;
+
   useEffect(() => {
     void refresh();
-    const iv = setInterval(() => void refresh(), 120_000);
+    const iv = setInterval(() => { if (!document.hidden) void refresh(); }, refreshMs);
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bbox.join(",")]);
+  }, [scanKey, refreshMs]);
 
   const activeLayers = Object.values(layers).filter((n) => n > 0).length;
   const totalPts = Object.values(layers).reduce((s, n) => s + n, 0);
-  const alerts =
-    (snap.maxMag >= 5 ? 1 : 0) + (snap.fires > 20 ? 1 : 0) + (snap.aqi > 55 ? 1 : 0) +
-    (snap.flood >= 55 ? 1 : 0);
+  const alertCounts = useMemo(() => countByLevel(alertList), [alertList]);
+  const topAlerts = useMemo(
+    () => alertList.filter((a) => a.level === "critico" || a.level === "alto").slice(0, 4),
+    [alertList],
+  );
+  const alerts = alertCounts.critico + alertCounts.alto;
+
 
 
   const today = fc?.days?.[0];

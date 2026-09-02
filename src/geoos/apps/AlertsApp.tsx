@@ -1,90 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Trash2,
-  Volume2, VolumeX, Wind, X,
+  AlertTriangle, Bell, BellOff, Crosshair, History, MapPin, Plus, RefreshCw, Search, Star, Timer,
+  Trash2, Volume2, VolumeX, Wind, X,
 } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
 import { getMapSnapshot } from "@/geoos/core/map-state";
 import { isMuted, playAlertSound, setMuted, unlockAudio } from "@/geoos/core/audio";
-import { fetchFires } from "@/lib/gis/providers/firms";
-import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
-import { fetchAirStations } from "@/lib/gis/providers/openaq";
-import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/providers/cyclones";
-import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
+import {
+  bboxAround, loadActiveId, loadWatchpoints, saveWatchpoints, setActiveWatch, type Watchpoint,
+} from "@/geoos/core/watchpoints";
+import {
+  buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, REFRESH_OPTIONS,
+  type AlertLevel as Level, type EnvAlert as Alert,
+} from "@/lib/gis/alerts";
 import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import type { BBox } from "@/lib/gis/simulated";
 
-
-type Level = "critico" | "alto" | "moderado";
-
-type Alert = {
-  id: string;
-  kind: "ciclone" | "queimada" | "sismo" | "ar" | "enchente";
-  level: Level;
-  title: string;
-  detail: string;
-  lat: number;
-  lng: number;
-  when: number;
-  km?: number;
-};
-
-/** Local monitorado com foco: município, bairro ou ponto qualquer + raio de vigilância. */
-type Watchpoint = {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  radiusKm: number;
-};
-
-const LEVEL_STYLE: Record<Level, { color: string; label: string }> = {
-  critico: { color: "#dc2626", label: "Crítico" },
-  alto: { color: "#f97316", label: "Alto" },
-  moderado: { color: "#eab308", label: "Moderado" },
-};
-
-const KIND_ICON: Record<Alert["kind"], string> = {
-  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
-};
-
-const REFRESH_MS = 180_000;
-const STORE_KEY = "geoos.alerts.watchpoints";
-const ACTIVE_KEY = "geoos.alerts.activeWatch";
 const RADIUS_OPTIONS = [10, 25, 50, 100, 200];
 
-function inside(b: BBox, lat: number, lng: number) {
-  return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
-}
-
-function distKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
-}
-
-/** BBox que circunscreve o raio de vigilância do local monitorado. */
-function bboxAround(lat: number, lng: number, km: number): BBox {
-  const dLat = km / 111;
-  const dLng = km / (111 * Math.max(0.15, Math.cos((lat * Math.PI) / 180)));
-  return [lng - dLng, lat - dLat, lng + dLng, lat + dLat];
-}
-
-function loadWatchpoints(): Watchpoint[] {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as Watchpoint[];
-    return Array.isArray(arr) ? arr.filter((w) => typeof w?.lat === "number") : [];
-  } catch {
-    return [];
-  }
-}
 
 /**
  * AlertsApp — central de alertas ambientais com foco local.
@@ -108,8 +42,10 @@ export default function AlertsApp() {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   const [watchpoints, setWatchpoints] = useState<Watchpoint[]>(() => loadWatchpoints());
-  const [activeId, setActiveId] = useState<string | null>(() => {
-    try { return localStorage.getItem(ACTIVE_KEY); } catch { return null; }
+  const [activeId, setActiveId] = useState<string | null>(() => loadActiveId());
+  const [refreshMs, setRefreshMs] = useState(() => {
+    const v = Number(localStorage.getItem("geoos.alerts.refreshMs"));
+    return REFRESH_OPTIONS.some((o) => o.ms === v) ? v : 180_000;
   });
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
@@ -119,110 +55,30 @@ export default function AlertsApp() {
   seenRef.current = seen;
 
   useBus("map.bbox", (b) => setBbox([b.west, b.south, b.east, b.north]));
+  // Sincroniza com a Central Ambiental: fixar um local lá vale aqui também.
+  useBus("watch.change", ({ id, list }) => {
+    setWatchpoints(list as Watchpoint[]);
+    setActiveId(id);
+  });
 
   const active = watchpoints.find((w) => w.id === activeId) ?? null;
 
+  const updateWatchpoints = (next: Watchpoint[]) => {
+    setWatchpoints(next);
+    saveWatchpoints(next);
+  };
+  const selectWatch = (id: string | null) => {
+    setActiveId(id);
+    setActiveWatch(id);
+  };
+
   useEffect(() => {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(watchpoints)); } catch { /* noop */ }
-  }, [watchpoints]);
-  useEffect(() => {
-    try {
-      if (activeId) localStorage.setItem(ACTIVE_KEY, activeId);
-      else localStorage.removeItem(ACTIVE_KEY);
-    } catch { /* noop */ }
-  }, [activeId]);
+    try { localStorage.setItem("geoos.alerts.refreshMs", String(refreshMs)); } catch { /* noop */ }
+  }, [refreshMs]);
 
   const load = useCallback(async (box: BBox, focus: Watchpoint | null) => {
     setLoading(true);
-    const [cyclones, fires, quakes, air, floods] = await Promise.all([
-      fetchCyclones().catch(() => []),
-      fetchFires(box, 1).catch(() => []),
-      fetchEarthquakes("day").catch(() => []),
-      fetchAirStations(box, 120).catch(() => []),
-      fetchFloodRisk(box, 4).catch(() => []),
-    ]);
-
-    const out: Alert[] = [];
-
-    for (const s of cyclones) {
-      const { label, cat } = cycloneCategory(s.intensityKt);
-      out.push({
-        id: `cyc:${s.id}`,
-        kind: "ciclone",
-        level: cat >= 3 ? "critico" : cat >= 1 ? "alto" : "moderado",
-        title: `${s.name} · ${label}`,
-        detail: `${s.intensityKt ?? "?"} kt · ${s.pressureMb ?? "?"} hPa · rumo ${bearingLabel(s.movementDir)}`,
-        lat: s.lat, lng: s.lng,
-        when: s.lastUpdate ? new Date(s.lastUpdate).getTime() : Date.now(),
-      });
-    }
-
-    for (const f of fires.filter((f) => f.frp >= 40).slice(0, 12)) {
-      out.push({
-        id: `fire:${f.lat.toFixed(3)}:${f.lng.toFixed(3)}`,
-        kind: "queimada",
-        level: f.frp >= 120 ? "critico" : "alto",
-        title: `Foco de calor · FRP ${f.frp.toFixed(0)} MW`,
-        detail: `Confiança ${f.confidence ?? "n/d"} · ${f.lat.toFixed(2)}, ${f.lng.toFixed(2)}`,
-        lat: f.lat, lng: f.lng,
-        when: Date.now(),
-      });
-    }
-
-    for (const q of quakes.filter((q) => q.mag >= 4 && inside(box, q.lat, q.lng)).slice(0, 12)) {
-      out.push({
-        id: `eq:${q.time}:${q.lat.toFixed(2)}`,
-        kind: "sismo",
-        level: q.mag >= 6 ? "critico" : q.mag >= 5 ? "alto" : "moderado",
-        title: `Sismo M ${q.mag.toFixed(1)}`,
-        detail: `${q.place} · ${q.depthKm.toFixed(0)} km de profundidade`,
-        lat: q.lat, lng: q.lng,
-        when: q.time,
-      });
-    }
-
-    for (const a of air.filter((s) => (s.value ?? 0) >= 35).slice(0, 10)) {
-      const v = a.value ?? 0;
-      out.push({
-        id: `air:${a.lat.toFixed(2)}:${a.lng.toFixed(2)}`,
-        kind: "ar",
-        level: v >= 75 ? "critico" : v >= 55 ? "alto" : "moderado",
-        title: `Ar insalubre · ${a.parameter.toUpperCase()} ${v.toFixed(0)} ${a.unit}`,
-        detail: a.city || `${a.lat.toFixed(2)}, ${a.lng.toFixed(2)}`,
-        lat: a.lat, lng: a.lng,
-        when: a.updated || Date.now(),
-      });
-    }
-
-    for (const f of floods.filter((f) => f.risk >= 32).slice(0, 12)) {
-      out.push({
-        id: f.id,
-        kind: "enchente",
-        level: f.risk >= 75 ? "critico" : f.risk >= 55 ? "alto" : "moderado",
-        title: `Risco de alagamento ${f.risk}/100`,
-        detail: `${FLOOD_LEVEL_LABEL[f.level]} · chuva 72 h ${f.rain72.toFixed(0)} mm${
-          f.dischargeRatio != null ? ` · rio a ${(f.dischargeRatio * 100).toFixed(0)}% da média` : ""
-        }`,
-        lat: f.lat, lng: f.lng,
-        when: f.updated,
-      });
-    }
-
-    let list = out;
-    if (focus) {
-      list = out
-        .map((a) => ({ ...a, km: distKm(focus, a) }))
-        // ciclones entram no raio ampliado — são fenômenos de grande escala
-        .filter((a) => (a.km ?? 0) <= (a.kind === "ciclone" ? Math.max(focus.radiusKm, 800) : focus.radiusKm));
-    }
-
-    const order: Record<Level, number> = { critico: 0, alto: 1, moderado: 2 };
-    list.sort(
-      (x, y) =>
-        order[x.level] - order[y.level] ||
-        (focus ? (x.km ?? 0) - (y.km ?? 0) : 0) ||
-        y.when - x.when,
-    );
+    const list = await buildAlerts(box, focus);
     setAlerts(list);
     setUpdatedAt(Date.now());
     setLoading(false);
@@ -257,17 +113,14 @@ export default function AlertsApp() {
       });
     };
     run();
-    const iv = setInterval(() => { if (!document.hidden) run(); }, REFRESH_MS);
+    const iv = setInterval(() => { if (!document.hidden) run(); }, refreshMs);
     return () => { alive = false; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanKey, notify]);
+  }, [scanKey, notify, refreshMs]);
 
 
-  const counts = useMemo(() => ({
-    critico: alerts.filter((a) => a.level === "critico").length,
-    alto: alerts.filter((a) => a.level === "alto").length,
-    moderado: alerts.filter((a) => a.level === "moderado").length,
-  }), [alerts]);
+
+  const counts = useMemo(() => countByLevel(alerts), [alerts]);
 
   const runSearch = useCallback(async () => {
     const q = query.trim();
@@ -292,13 +145,16 @@ export default function AlertsApp() {
   const addWatch = (name: string, lat: number, lng: number) => {
     const short = name.split(",").slice(0, 2).join(",").trim();
     const wp: Watchpoint = { id: `wp:${Date.now()}`, name: short || name, lat, lng, radiusKm: 25 };
-    setWatchpoints((w) => [...w, wp]);
-    setActiveId(wp.id);
+    const next = [...watchpoints, wp];
+    setWatchpoints(next);
+    saveWatchpoints(next);
+    selectWatch(wp.id);
     setAdding(false);
     setQuery("");
     setResults([]);
     bus.emit("map.flyTo", { lat, lng, zoom: 10 });
   };
+
 
   const addCurrentCenter = async () => {
     const snap = getMapSnapshot();
@@ -379,7 +235,7 @@ export default function AlertsApp() {
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={() => setActiveId(null)}
+            onClick={() => selectWatch(null)}
             className={`rounded-full border px-2.5 py-1 text-[11px] transition-all active:scale-95 ${
               !active
                 ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
@@ -388,6 +244,7 @@ export default function AlertsApp() {
           >
             Área visível
           </button>
+
           {watchpoints.map((w) => (
             <span
               key={w.id}
@@ -399,7 +256,7 @@ export default function AlertsApp() {
             >
               <button
                 type="button"
-                onClick={() => { setActiveId(w.id); bus.emit("map.flyTo", { lat: w.lat, lng: w.lng, zoom: 10 }); }}
+                onClick={() => { selectWatch(w.id); bus.emit("map.flyTo", { lat: w.lat, lng: w.lng, zoom: 10 }); }}
                 className="flex max-w-[150px] items-center gap-1 active:scale-95"
                 title={`Monitorar ${w.name} (raio ${w.radiusKm} km)`}
               >
@@ -410,13 +267,14 @@ export default function AlertsApp() {
                 type="button"
                 title="Remover local"
                 onClick={() => {
-                  setWatchpoints((list) => list.filter((x) => x.id !== w.id));
-                  if (activeId === w.id) setActiveId(null);
+                  updateWatchpoints(watchpoints.filter((x) => x.id !== w.id));
+                  if (activeId === w.id) selectWatch(null);
                 }}
                 className="text-white/35 transition-colors hover:text-red-400"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
+
             </span>
           ))}
         </div>
@@ -457,14 +315,14 @@ export default function AlertsApp() {
         )}
 
         {active && (
-          <div className="mt-2 flex items-center gap-1.5">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-white/40">Raio</span>
             {RADIUS_OPTIONS.map((km) => (
               <button
                 key={km}
                 type="button"
                 onClick={() =>
-                  setWatchpoints((list) => list.map((w) => (w.id === active.id ? { ...w, radiusKm: km } : w)))
+                  updateWatchpoints(watchpoints.map((w) => (w.id === active.id ? { ...w, radiusKm: km } : w)))
                 }
                 className={`rounded-full border px-2 py-0.5 font-mono text-[10px] transition-all active:scale-95 ${
                   active.radiusKm === km
@@ -477,6 +335,27 @@ export default function AlertsApp() {
             ))}
           </div>
         )}
+
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-white/40">
+            <Timer className="h-3 w-3" /> Atualizar
+          </span>
+          {REFRESH_OPTIONS.map((o) => (
+            <button
+              key={o.ms}
+              type="button"
+              onClick={() => setRefreshMs(o.ms)}
+              className={`rounded-full border px-2 py-0.5 font-mono text-[10px] transition-all active:scale-95 ${
+                refreshMs === o.ms
+                  ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                  : "border-white/10 text-white/50 hover:bg-white/10"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
 
         <div className="mt-1.5 text-[10px] leading-relaxed text-white/40">
           {active
