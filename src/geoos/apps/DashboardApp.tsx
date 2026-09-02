@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import {
   Activity,
+  AlertTriangle,
+  Crosshair,
   Download,
 
   Cloud,
@@ -11,19 +13,32 @@ import {
   Eye,
   Flame,
   Gauge,
+  MapPin,
   Moon,
+  Plus,
   RefreshCw,
+  Search,
+  Star,
   Sun,
   Sunrise,
   Sunset,
   Thermometer,
+  Timer,
+  Trash2,
   Wifi,
   WifiOff,
   Wind,
+  X,
   Zap,
 } from "lucide-react";
 import { useBus } from "@/geoos/core/useBus";
 import { bus, type ApiStatus } from "@/geoos/core/bus";
+import { getMapSnapshot } from "@/geoos/core/map-state";
+import {
+  bboxAround, loadActiveId, loadWatchpoints, saveWatchpoints, setActiveWatch, type Watchpoint,
+} from "@/geoos/core/watchpoints";
+import { buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, REFRESH_OPTIONS, type EnvAlert } from "@/lib/gis/alerts";
+import { searchAddress, reverseGeocode, parseCoordinates } from "@/lib/gis/geocoding";
 import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import {
   fetchForecast,
@@ -36,6 +51,7 @@ import { fetchFires } from "@/lib/gis/providers/firms";
 import { fetchFloodRisk } from "@/lib/gis/providers/floods";
 
 import type { BBox } from "@/lib/gis/simulated";
+
 
 type Snapshot = {
   quakes: number;
