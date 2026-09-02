@@ -315,14 +315,14 @@ export default function AlertsApp() {
         )}
 
         {active && (
-          <div className="mt-2 flex items-center gap-1.5">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-wider text-white/40">Raio</span>
             {RADIUS_OPTIONS.map((km) => (
               <button
                 key={km}
                 type="button"
                 onClick={() =>
-                  setWatchpoints((list) => list.map((w) => (w.id === active.id ? { ...w, radiusKm: km } : w)))
+                  updateWatchpoints(watchpoints.map((w) => (w.id === active.id ? { ...w, radiusKm: km } : w)))
                 }
                 className={`rounded-full border px-2 py-0.5 font-mono text-[10px] transition-all active:scale-95 ${
                   active.radiusKm === km
@@ -335,6 +335,27 @@ export default function AlertsApp() {
             ))}
           </div>
         )}
+
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-white/40">
+            <Timer className="h-3 w-3" /> Atualizar
+          </span>
+          {REFRESH_OPTIONS.map((o) => (
+            <button
+              key={o.ms}
+              type="button"
+              onClick={() => setRefreshMs(o.ms)}
+              className={`rounded-full border px-2 py-0.5 font-mono text-[10px] transition-all active:scale-95 ${
+                refreshMs === o.ms
+                  ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/15 text-white"
+                  : "border-white/10 text-white/50 hover:bg-white/10"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
 
         <div className="mt-1.5 text-[10px] leading-relaxed text-white/40">
           {active
