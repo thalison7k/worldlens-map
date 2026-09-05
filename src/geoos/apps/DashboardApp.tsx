@@ -503,6 +503,23 @@ export default function DashboardApp() {
             {t === "clima" ? "Clima" : "Ambiente"}
           </button>
         ))}
+        <span className="ml-auto flex items-center gap-1 text-white/40">
+          <Timer className="h-3 w-3" />
+          {REFRESH_OPTIONS.map((o) => (
+            <button
+              key={o.ms}
+              onClick={() => setRefreshMs(o.ms)}
+              className={`rounded-full px-1.5 py-0.5 text-[9px] transition-colors ${
+                refreshMs === o.ms
+                  ? "bg-[color:var(--geoos-accent)]/20 text-[color:var(--geoos-accent)]"
+                  : "text-white/40 hover:bg-white/[0.06]"
+              }`}
+              title={`Atualizar a cada ${o.label}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
