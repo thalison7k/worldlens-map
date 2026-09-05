@@ -9,7 +9,7 @@ import {
 } from "@/lib/prefeituras";
 import { searchAddress } from "@/lib/gis/geocoding";
 
-export const Route = createFileRoute("/prefeituras")({
+export const Route = createFileRoute("/prefeituras/")({
   head: () => ({
     meta: [
       { title: "Prefeituras — Painéis ambientais municipais | GeoOS" },
