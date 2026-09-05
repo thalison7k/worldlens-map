@@ -397,8 +397,99 @@ export default function DashboardApp() {
 
       </div>
 
+      {/* Localidade monitorada (compartilhada com a Central de Alertas) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-white/10 px-3 py-1.5">
+        <button
+          onClick={() => selectWatch(null)}
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] transition-colors ${
+            !active
+              ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-[color:var(--geoos-accent)]"
+              : "border-white/10 text-white/60 hover:bg-white/[0.06]"
+          }`}
+        >
+          Área visível
+        </button>
+        {watchpoints.map((w) => (
+          <span key={w.id} className="flex shrink-0 items-center">
+            <button
+              onClick={() => selectWatch(w.id)}
+              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] transition-colors ${
+                activeId === w.id
+                  ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-[color:var(--geoos-accent)]"
+                  : "border-white/10 text-white/60 hover:bg-white/[0.06]"
+              }`}
+            >
+              <MapPin className="h-2.5 w-2.5" />
+              {w.name}
+            </button>
+            <button
+              onClick={() => {
+                const next = watchpoints.filter((x) => x.id !== w.id);
+                updateWatchpoints(next);
+                if (activeId === w.id) selectWatch(null);
+              }}
+              className="ml-0.5 rounded-full p-0.5 text-white/30 hover:text-white/70"
+              title={`Remover ${w.name}`}
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        ))}
+        <button
+          onClick={() => setAdding((a) => !a)}
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-dashed border-white/20 text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+          title="Monitorar novo município"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      </div>
+
+      {adding && (
+        <div className="space-y-1.5 border-b border-white/10 px-3 py-2">
+          <div className="flex gap-1.5">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/35" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void runSearch()}
+                placeholder="Município, CEP ou lat,lng… (ex.: Mogi das Cruzes)"
+                className="h-7 w-full rounded-md border border-white/10 bg-white/[0.05] pl-7 pr-2 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[color:var(--geoos-accent)]/50"
+              />
+            </div>
+            <button
+              onClick={() => void runSearch()}
+              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
+              title="Buscar"
+            >
+              {searching ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            </button>
+            <button
+              onClick={() => void addCurrentCenter()}
+              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
+              title="Fixar centro atual do mapa"
+            >
+              <Crosshair className="h-3 w-3" />
+            </button>
+          </div>
+          {results.length > 0 && (
+            <div className="max-h-28 space-y-0.5 overflow-y-auto rounded-md border border-white/10 bg-white/[0.02] p-1">
+              {results.map((r) => (
+                <button
+                  key={`${r.lat}:${r.lng}`}
+                  onClick={() => addWatch(r.name, r.lat, r.lng)}
+                  className="block w-full truncate rounded px-2 py-1 text-left text-[10px] text-white/75 hover:bg-white/[0.07]"
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/10 px-3 py-2">
+      <div className="flex items-center gap-1 border-b border-white/10 px-3 py-2">
         {(["clima", "ambiente"] as const).map((t) => (
           <button
             key={t}
