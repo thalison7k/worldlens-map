@@ -664,6 +664,52 @@ export default function DashboardApp() {
               ))}
             </div>
 
+            {/* Alertas cruzados com a localidade ativa */}
+            <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Alertas em {active ? active.name : "área visível"}
+                </span>
+                <span className="flex gap-1 text-[9px] font-mono">
+                  <span className="rounded bg-red-500/20 px-1 text-red-300">{alertCounts.critico}</span>
+                  <span className="rounded bg-orange-500/20 px-1 text-orange-300">{alertCounts.alto}</span>
+                  <span className="rounded bg-yellow-500/20 px-1 text-yellow-300">{alertCounts.moderado}</span>
+                </span>
+              </div>
+              {topAlerts.length === 0 ? (
+                <p className="text-[10px] text-white/35">Nenhum alerta crítico/alto nesta localidade.</p>
+              ) : (
+                <div className="space-y-1">
+                  {topAlerts.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: 8 })}
+                      className="flex w-full items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1 text-left transition-colors hover:bg-white/[0.06]"
+                    >
+                      <span>{KIND_ICON[a.kind]}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[10px] text-white/85">{a.title}</span>
+                        <span className="block truncate text-[9px] text-white/40">
+                          {a.detail}
+                          {typeof a.km === "number" && ` · ${a.km.toFixed(0)} km`}
+                        </span>
+                      </span>
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: LEVEL_STYLE[a.level].color }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => bus.emit("app.open", { appId: "alerts" })}
+                className="mt-2 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 transition-colors hover:bg-white/10"
+              >
+                Abrir Central de Alertas →
+              </button>
+            </section>
+
             <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/40">Status das APIs</div>
               <div className="space-y-1">
