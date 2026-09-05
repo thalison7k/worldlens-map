@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import {
   Activity,
-  AlertTriangle,
   Crosshair,
   Download,
-
   Cloud,
   CloudRain,
   CloudSun,
@@ -18,13 +16,11 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Star,
   Sun,
   Sunrise,
   Sunset,
   Thermometer,
   Timer,
-  Trash2,
   Wifi,
   WifiOff,
   Wind,
