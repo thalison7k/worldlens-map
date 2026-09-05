@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrefeiturasIndexRouteImport } from './routes/prefeituras.index'
+import { Route as PrefeiturasSlugRouteImport } from './routes/prefeituras.$slug'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
 import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
@@ -25,6 +27,16 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefeiturasIndexRoute = PrefeiturasIndexRouteImport.update({
+  id: '/prefeituras/',
+  path: '/prefeituras/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrefeiturasSlugRoute = PrefeiturasSlugRouteImport.update({
+  id: '/prefeituras/$slug',
+  path: '/prefeituras/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -57,6 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/prefeituras/$slug': typeof PrefeiturasSlugRoute
+  '/prefeituras/': typeof PrefeiturasIndexRoute
   '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
@@ -66,6 +80,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/prefeituras/$slug': typeof PrefeiturasSlugRoute
+  '/prefeituras': typeof PrefeiturasIndexRoute
   '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
@@ -76,6 +92,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/chat': typeof ApiChatRoute
+  '/prefeituras/$slug': typeof PrefeiturasSlugRoute
+  '/prefeituras/': typeof PrefeiturasIndexRoute
   '/api/public/cyclones': typeof ApiPublicCyclonesRoute
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
@@ -87,6 +105,8 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/prefeituras/$slug'
+    | '/prefeituras/'
     | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
@@ -96,6 +116,8 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/prefeituras/$slug'
+    | '/prefeituras'
     | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
@@ -105,6 +127,8 @@ export interface FileRouteTypes {
     | '/'
     | '/sitemap.xml'
     | '/api/chat'
+    | '/prefeituras/$slug'
+    | '/prefeituras/'
     | '/api/public/cyclones'
     | '/api/public/enso'
     | '/api/public/firms'
@@ -115,6 +139,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiChatRoute: typeof ApiChatRoute
+  PrefeiturasSlugRoute: typeof PrefeiturasSlugRoute
+  PrefeiturasIndexRoute: typeof PrefeiturasIndexRoute
   ApiPublicCyclonesRoute: typeof ApiPublicCyclonesRoute
   ApiPublicEnsoRoute: typeof ApiPublicEnsoRoute
   ApiPublicFirmsRoute: typeof ApiPublicFirmsRoute
@@ -135,6 +161,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefeituras/': {
+      id: '/prefeituras/'
+      path: '/prefeituras'
+      fullPath: '/prefeituras/'
+      preLoaderRoute: typeof PrefeiturasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prefeituras/$slug': {
+      id: '/prefeituras/$slug'
+      path: '/prefeituras/$slug'
+      fullPath: '/prefeituras/$slug'
+      preLoaderRoute: typeof PrefeiturasSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -179,6 +219,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiChatRoute: ApiChatRoute,
+  PrefeiturasSlugRoute: PrefeiturasSlugRoute,
+  PrefeiturasIndexRoute: PrefeiturasIndexRoute,
   ApiPublicCyclonesRoute: ApiPublicCyclonesRoute,
   ApiPublicEnsoRoute: ApiPublicEnsoRoute,
   ApiPublicFirmsRoute: ApiPublicFirmsRoute,
