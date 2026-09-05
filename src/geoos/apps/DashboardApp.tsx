@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { exportExcel, exportWord, stamp, type Cell as XCell } from "@/lib/gis/office-export";
 import {
   Activity,
-  AlertTriangle,
   Crosshair,
   Download,
-
   Cloud,
   CloudRain,
   CloudSun,
@@ -18,13 +16,11 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Star,
   Sun,
   Sunrise,
   Sunset,
   Thermometer,
   Timer,
-  Trash2,
   Wifi,
   WifiOff,
   Wind,
@@ -397,8 +393,99 @@ export default function DashboardApp() {
 
       </div>
 
+      {/* Localidade monitorada (compartilhada com a Central de Alertas) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-white/10 px-3 py-1.5">
+        <button
+          onClick={() => selectWatch(null)}
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] transition-colors ${
+            !active
+              ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-[color:var(--geoos-accent)]"
+              : "border-white/10 text-white/60 hover:bg-white/[0.06]"
+          }`}
+        >
+          Área visível
+        </button>
+        {watchpoints.map((w) => (
+          <span key={w.id} className="flex shrink-0 items-center">
+            <button
+              onClick={() => selectWatch(w.id)}
+              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] transition-colors ${
+                activeId === w.id
+                  ? "border-[color:var(--geoos-accent)]/50 bg-[color:var(--geoos-accent)]/15 text-[color:var(--geoos-accent)]"
+                  : "border-white/10 text-white/60 hover:bg-white/[0.06]"
+              }`}
+            >
+              <MapPin className="h-2.5 w-2.5" />
+              {w.name}
+            </button>
+            <button
+              onClick={() => {
+                const next = watchpoints.filter((x) => x.id !== w.id);
+                updateWatchpoints(next);
+                if (activeId === w.id) selectWatch(null);
+              }}
+              className="ml-0.5 rounded-full p-0.5 text-white/30 hover:text-white/70"
+              title={`Remover ${w.name}`}
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        ))}
+        <button
+          onClick={() => setAdding((a) => !a)}
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-dashed border-white/20 text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+          title="Monitorar novo município"
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      </div>
+
+      {adding && (
+        <div className="space-y-1.5 border-b border-white/10 px-3 py-2">
+          <div className="flex gap-1.5">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-white/35" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void runSearch()}
+                placeholder="Município, CEP ou lat,lng… (ex.: Mogi das Cruzes)"
+                className="h-7 w-full rounded-md border border-white/10 bg-white/[0.05] pl-7 pr-2 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[color:var(--geoos-accent)]/50"
+              />
+            </div>
+            <button
+              onClick={() => void runSearch()}
+              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
+              title="Buscar"
+            >
+              {searching ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            </button>
+            <button
+              onClick={() => void addCurrentCenter()}
+              className="grid h-7 w-7 place-items-center rounded-md border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/10"
+              title="Fixar centro atual do mapa"
+            >
+              <Crosshair className="h-3 w-3" />
+            </button>
+          </div>
+          {results.length > 0 && (
+            <div className="max-h-28 space-y-0.5 overflow-y-auto rounded-md border border-white/10 bg-white/[0.02] p-1">
+              {results.map((r) => (
+                <button
+                  key={`${r.lat}:${r.lng}`}
+                  onClick={() => addWatch(r.name, r.lat, r.lng)}
+                  className="block w-full truncate rounded px-2 py-1 text-left text-[10px] text-white/75 hover:bg-white/[0.07]"
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/10 px-3 py-2">
+      <div className="flex items-center gap-1 border-b border-white/10 px-3 py-2">
         {(["clima", "ambiente"] as const).map((t) => (
           <button
             key={t}
@@ -412,6 +499,23 @@ export default function DashboardApp() {
             {t === "clima" ? "Clima" : "Ambiente"}
           </button>
         ))}
+        <span className="ml-auto flex items-center gap-1 text-white/40">
+          <Timer className="h-3 w-3" />
+          {REFRESH_OPTIONS.map((o) => (
+            <button
+              key={o.ms}
+              onClick={() => setRefreshMs(o.ms)}
+              className={`rounded-full px-1.5 py-0.5 text-[9px] transition-colors ${
+                refreshMs === o.ms
+                  ? "bg-[color:var(--geoos-accent)]/20 text-[color:var(--geoos-accent)]"
+                  : "text-white/40 hover:bg-white/[0.06]"
+              }`}
+              title={`Atualizar a cada ${o.label}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -555,6 +659,52 @@ export default function DashboardApp() {
                 </div>
               ))}
             </div>
+
+            {/* Alertas cruzados com a localidade ativa */}
+            <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Alertas em {active ? active.name : "área visível"}
+                </span>
+                <span className="flex gap-1 text-[9px] font-mono">
+                  <span className="rounded bg-red-500/20 px-1 text-red-300">{alertCounts.critico}</span>
+                  <span className="rounded bg-orange-500/20 px-1 text-orange-300">{alertCounts.alto}</span>
+                  <span className="rounded bg-yellow-500/20 px-1 text-yellow-300">{alertCounts.moderado}</span>
+                </span>
+              </div>
+              {topAlerts.length === 0 ? (
+                <p className="text-[10px] text-white/35">Nenhum alerta crítico/alto nesta localidade.</p>
+              ) : (
+                <div className="space-y-1">
+                  {topAlerts.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => bus.emit("map.flyTo", { lat: a.lat, lng: a.lng, zoom: 8 })}
+                      className="flex w-full items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1 text-left transition-colors hover:bg-white/[0.06]"
+                    >
+                      <span>{KIND_ICON[a.kind]}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[10px] text-white/85">{a.title}</span>
+                        <span className="block truncate text-[9px] text-white/40">
+                          {a.detail}
+                          {typeof a.km === "number" && ` · ${a.km.toFixed(0)} km`}
+                        </span>
+                      </span>
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: LEVEL_STYLE[a.level].color }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => bus.emit("app.open", { appId: "alerts" })}
+                className="mt-2 w-full rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 transition-colors hover:bg-white/10"
+              >
+                Abrir Central de Alertas →
+              </button>
+            </section>
 
             <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <div className="mb-1.5 text-[10px] uppercase tracking-wider text-white/40">Status das APIs</div>
