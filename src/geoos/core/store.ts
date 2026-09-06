@@ -23,12 +23,39 @@ type Actions = {
   setWorkspace: (id: string) => void;
   addNotification: (n: Omit<Notification, "id" | "ts">) => void;
   markAllRead: () => void;
+  markRead: (id: string) => void;
+  removeNotification: (id: string) => void;
+  toggleSaved: (id: string) => void;
+  clearNotifications: (opts?: { keepSaved?: boolean }) => void;
+  hydrateNotifications: () => void;
   setActivity: (open: boolean) => void;
   setPalette: (open: boolean) => void;
   setTheme: (t: "dark" | "light") => void;
 };
 
 let zCounter = 10;
+
+const NOTIF_KEY = "geoos.notifications";
+
+function readStored(): Notification[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(NOTIF_KEY);
+    const arr = raw ? (JSON.parse(raw) as Notification[]) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function persist(list: Notification[]) {
+  try {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(0, 120)));
+  } catch {
+    /* noop */
+  }
+  return list;
+}
 
 export const useGeoOS = create<State & Actions>((set, get) => ({
   workspaceId: "environment",
@@ -127,13 +154,36 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
   setWorkspace: (id) => set({ workspaceId: id }),
 
   addNotification: (n) =>
-    set((s) => ({
-      notifications: [
+    set((s) => {
+      if (n.dedupeKey && s.notifications.some((x) => x.dedupeKey === n.dedupeKey)) return s;
+      const notifications = persist([
         { id: Math.random().toString(36).slice(2), ts: Date.now(), ...n },
         ...s.notifications,
-      ].slice(0, 50),
+      ].slice(0, 120));
+      return { notifications };
+    }),
+  markAllRead: () =>
+    set((s) => ({ notifications: persist(s.notifications.map((n) => ({ ...n, read: true }))) })),
+  markRead: (id) =>
+    set((s) => ({
+      notifications: persist(s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n))),
     })),
-  markAllRead: () => set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
+  removeNotification: (id) =>
+    set((s) => ({ notifications: persist(s.notifications.filter((n) => n.id !== id)) })),
+  toggleSaved: (id) =>
+    set((s) => ({
+      notifications: persist(
+        s.notifications.map((n) => (n.id === id ? { ...n, saved: !n.saved, read: true } : n)),
+      ),
+    })),
+  clearNotifications: (opts) =>
+    set((s) => ({
+      notifications: persist(opts?.keepSaved ? s.notifications.filter((n) => n.saved) : []),
+    })),
+  hydrateNotifications: () => {
+    const stored = readStored();
+    if (stored.length) set({ notifications: stored });
+  },
   setActivity: (open) => set({ activityOpen: open }),
   setPalette: (open) => set({ paletteOpen: open }),
   setTheme: (theme) => set({ theme }),
