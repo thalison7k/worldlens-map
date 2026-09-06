@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bell, Search, Sun, Moon, Palette, Download } from "lucide-react";
+import { Bell, Building2, Search, Sun, Moon, Palette, Download } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useGeoOS } from "@/geoos/core/store";
 import { WORKSPACES } from "@/geoos/core/workspaces";
 import { THEME_VARIANTS, getCurrentVariant } from "@/geoos/core/theme";
@@ -68,6 +69,14 @@ export function Topbar() {
       </button>
 
       <div className="pointer-events-auto ml-auto flex items-center gap-1">
+        <Link
+          to="/prefeituras"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-[11px] font-medium text-white/80 hover:bg-white/10"
+          title="Painéis municipais"
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Prefeituras</span>
+        </Link>
         {canInstall && (
           <button
             onClick={() => void install()}
