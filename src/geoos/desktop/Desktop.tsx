@@ -12,6 +12,7 @@ import { MapToolbar } from "./MapToolbar";
 import { QuickLayersBar } from "./QuickLayersBar";
 import { bus } from "@/geoos/core/bus";
 import { startThemeEngine } from "@/geoos/core/theme";
+import { startPrefeituraAlertWatch } from "@/geoos/core/prefeitura-watch";
 
 export function Desktop() {
   const theme = useGeoOS((s) => s.theme);
@@ -65,6 +66,9 @@ export function Desktop() {
       bus.off("notify", onNotify);
     };
   }, [openApp, addNotification]);
+
+  // Vigia das prefeituras com alertas ativados → notificações
+  useEffect(() => startPrefeituraAlertWatch(), []);
 
   return (
     <div className="geoos-shell fixed inset-0 overflow-hidden bg-[color:var(--geoos-bg)] text-white">
