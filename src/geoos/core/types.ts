@@ -43,4 +43,10 @@ export type Notification = {
   level: "info" | "warn" | "error" | "success";
   ts: number;
   read?: boolean;
+  /** Notificação salva pelo usuário — nunca é apagada em "limpar". */
+  saved?: boolean;
+  /** Origem legível (ex.: "Prefeitura de Mogi das Cruzes"). */
+  source?: string;
+  /** Chave de deduplicação (ex.: id do alerta ambiental). */
+  dedupeKey?: string;
 };
