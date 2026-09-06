@@ -10,6 +10,8 @@ export type Prefeitura = {
   lat: number;
   lng: number;
   radiusKm: number;
+  /** Quando falso, os alertas deste município não geram notificações. */
+  alertsEnabled?: boolean;
 };
 
 const KEY = "geoos.prefeituras";
@@ -53,4 +55,13 @@ export function savePrefeituras(list: Prefeitura[]) {
 
 export function getPrefeitura(slug: string): Prefeitura | null {
   return loadPrefeituras().find((p) => p.slug === slug) ?? null;
+}
+
+/** Liga/desliga as notificações de alertas de um município. */
+export function setAlertsEnabled(slug: string, enabled: boolean): Prefeitura[] {
+  const next = loadPrefeituras().map((p) =>
+    p.slug === slug ? { ...p, alertsEnabled: enabled } : p,
+  );
+  savePrefeituras(next);
+  return next;
 }
