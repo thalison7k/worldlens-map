@@ -1,7 +1,21 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Building2, FileSpreadsheet, FileText, RefreshCw } from "lucide-react";
-import { getPrefeitura, type Prefeitura } from "@/lib/prefeituras";
+import {
+  ArrowLeft,
+  Bell,
+  BellOff,
+  Building2,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
+} from "lucide-react";
+import {
+  FONTES_REAIS,
+  getMonitoredSlug,
+  getPrefeitura,
+  setMonitored,
+  type Prefeitura,
+} from "@/lib/prefeituras";
 import { bboxAround } from "@/geoos/core/watchpoints";
 import { buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, type EnvAlert } from "@/lib/gis/alerts";
 import { fetchForecast, weatherLabel, type ForecastBundle } from "@/lib/gis/providers/openmeteo";
@@ -33,6 +47,7 @@ export const Route = createFileRoute("/prefeituras/$slug")({
 function PrefeituraDashboard() {
   const { slug } = useParams({ from: "/prefeituras/$slug" });
   const [pref, setPref] = useState<Prefeitura | null | undefined>(undefined);
+  const [monitored, setMonitoredSlug] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<EnvAlert[]>([]);
   const [forecast, setForecast] = useState<ForecastBundle | null>(null);
   const [floods, setFloods] = useState<FloodCell[]>([]);
@@ -42,6 +57,7 @@ function PrefeituraDashboard() {
 
   useEffect(() => {
     setPref(getPrefeitura(slug));
+    setMonitoredSlug(getMonitoredSlug());
   }, [slug]);
 
   const load = useCallback(async (p: Prefeitura) => {
@@ -78,10 +94,8 @@ function PrefeituraDashboard() {
   const counts = useMemo(() => countByLevel(alerts), [alerts]);
   const today = forecast?.days?.[0];
   const now = forecast?.hours?.[0];
-  const maxFlood = useMemo(
-    () => floods.reduce((m, f) => Math.max(m, f.risk), 0),
-    [floods],
-  );
+  const maxFlood = useMemo(() => floods.reduce((m, f) => Math.max(m, f.risk), 0), [floods]);
+  const isMonitored = !!pref && monitored === pref.slug;
 
   const meta = pref
     ? {
@@ -89,7 +103,7 @@ function PrefeituraDashboard() {
         Coordenadas: `${pref.lat.toFixed(4)}, ${pref.lng.toFixed(4)}`,
         "Raio monitorado (km)": pref.radiusKm,
         "Gerado em": new Date().toLocaleString("pt-BR"),
-        Fontes: "NASA FIRMS/INPE, USGS, OpenAQ, Open-Meteo, GloFAS, NOAA NHC",
+        Fontes: FONTES_REAIS.map((f) => f.label).join(", "),
       }
     : {};
 
@@ -160,23 +174,24 @@ function PrefeituraDashboard() {
         { title: "Previsão para 7 dias", columns: dayCols, rows: dayRows },
         { title: "Risco de enchente por célula", columns: floodCols, rows: floodRows },
       ],
-      `${new Date().toLocaleString("pt-BR")} · Fontes: NASA FIRMS/INPE, USGS, OpenAQ, Open-Meteo, GloFAS, NOAA NHC`,
+      `${new Date().toLocaleString("pt-BR")} · Fontes: ${FONTES_REAIS.map((f) => f.label).join(", ")}`,
     );
   }
 
   if (pref === undefined) {
-    return <main className="min-h-screen bg-background" />;
+    return <main className="geoos-shell min-h-screen bg-[color:var(--geoos-bg,#0a0f1a)]" />;
   }
 
   if (!pref) {
     return (
-      <main className="grid min-h-screen place-items-center bg-background px-4 text-center text-foreground">
+      <main className="geoos-shell grid min-h-screen place-items-center bg-[color:var(--geoos-bg,#0a0f1a)] px-4 text-center text-white">
         <div>
           <h1 className="text-xl font-semibold">Prefeitura não encontrada</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Cadastre o município na lista de prefeituras.
-          </p>
-          <Link to="/prefeituras" className="mt-4 inline-block text-sm text-primary">
+          <p className="mt-2 text-sm text-white/55">Cadastre o município na lista de prefeituras.</p>
+          <Link
+            to="/prefeituras"
+            className="mt-4 inline-block text-sm text-[color:var(--geoos-accent)]"
+          >
             ← Ver prefeituras
           </Link>
         </div>
@@ -185,62 +200,89 @@ function PrefeituraDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground">
+    <main className="geoos-shell min-h-screen bg-[color:var(--geoos-bg,#0a0f1a)] px-4 py-10 text-white">
       <div className="mx-auto w-full max-w-5xl">
         <Link
           to="/prefeituras"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white"
         >
           <ArrowLeft className="size-3.5" /> Prefeituras
         </Link>
 
         <header className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-xl bg-primary/15 text-primary">
+            <span className="grid size-11 place-items-center rounded-xl border border-white/10 bg-[color:var(--geoos-accent)]/15 text-[color:var(--geoos-accent)]">
               <Building2 className="size-6" />
             </span>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">
                 Prefeitura de {pref.name}
-                {pref.uf ? <span className="text-muted-foreground"> · {pref.uf}</span> : null}
+                {pref.uf ? <span className="text-white/45"> · {pref.uf}</span> : null}
               </h1>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white/50">
                 Raio de {pref.radiusKm} km ·{" "}
-                {updated ? `atualizado ${new Date(updated).toLocaleTimeString("pt-BR")}` : "carregando…"}
+                {updated
+                  ? `atualizado ${new Date(updated).toLocaleTimeString("pt-BR")}`
+                  : "carregando…"}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
+              type="button"
+              role="switch"
+              aria-checked={isMonitored}
+              onClick={() => {
+                const next = isMonitored ? null : pref.slug;
+                setMonitored(next);
+                setMonitoredSlug(next);
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                isMonitored
+                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
+                  : "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {isMonitored ? <Bell className="size-4" /> : <BellOff className="size-4" />}
+              {isMonitored ? "Monitorada" : "Monitorar"}
+            </button>
+            <button
               onClick={() => void load(pref)}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-primary/60"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
             >
               <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Atualizar
             </button>
             <button
               onClick={onExcel}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-primary/60"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
             >
               <FileSpreadsheet className="size-4" /> Excel
             </button>
             <button
               onClick={onWord}
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-primary/60"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
             >
               <FileText className="size-4" /> Word
             </button>
           </div>
         </header>
 
+        {monitored && !isMonitored && (
+          <p className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
+            As notificações estão vinculadas a outro município. Só uma prefeitura é monitorada por
+            vez — ative aqui para trocar.
+          </p>
+        )}
+
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label="Críticos" value={counts.critico} tone="#dc2626" />
-          <Kpi label="Altos" value={counts.alto} tone="#f97316" />
-          <Kpi label="Moderados" value={counts.moderado} tone="#eab308" />
+          <Kpi label="Críticos" value={counts.critico} tone="#f87171" />
+          <Kpi label="Altos" value={counts.alto} tone="#fb923c" />
+          <Kpi label="Moderados" value={counts.moderado} tone="#facc15" />
           <Kpi label="Risco enchente" value={`${maxFlood}/100`} tone="#38bdf8" />
         </section>
 
-        <section className="mt-4 grid gap-3 sm:grid-cols-4">
+        <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Kpi label="Temperatura" value={now ? `${now.temp.toFixed(0)}°C` : "—"} />
           <Kpi label="Umidade" value={now ? `${now.humidity.toFixed(0)}%` : "—"} />
           <Kpi label="Vento" value={now ? `${now.wind.toFixed(0)} km/h` : "—"} />
@@ -248,19 +290,21 @@ function PrefeituraDashboard() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/60">
             Alertas ativos no município
           </h2>
           <div className="mt-3 space-y-2">
             {alerts.length === 0 && (
-              <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-                {loading ? "Consultando fontes ambientais…" : "Nenhum alerta ativo no raio monitorado."}
+              <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-white/50">
+                {loading
+                  ? "Consultando fontes ambientais…"
+                  : "Nenhum alerta ativo no raio monitorado."}
               </p>
             )}
             {alerts.slice(0, 25).map((a) => (
               <article
                 key={a.id}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
+                className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3"
               >
                 <span className="text-lg leading-none">{KIND_ICON[a.kind]}</span>
                 <div className="min-w-0 flex-1">
@@ -273,10 +317,10 @@ function PrefeituraDashboard() {
                       {LEVEL_STYLE[a.level].label}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{a.detail}</p>
+                  <p className="mt-0.5 text-xs text-white/55">{a.detail}</p>
                 </div>
                 {a.km != null && (
-                  <span className="shrink-0 text-xs text-muted-foreground">{a.km.toFixed(0)} km</span>
+                  <span className="shrink-0 text-xs text-white/45">{a.km.toFixed(0)} km</span>
                 )}
               </article>
             ))}
@@ -284,28 +328,49 @@ function PrefeituraDashboard() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/60">
             Previsão para 7 dias
           </h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             {(forecast?.days ?? []).map((d) => (
-              <div key={d.date} className="rounded-lg border border-border bg-card p-3 text-center">
-                <p className="text-xs text-muted-foreground">
-                  {new Date(d.date).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit" })}
+              <div
+                key={d.date}
+                className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-center"
+              >
+                <p className="text-xs text-white/50">
+                  {new Date(d.date).toLocaleDateString("pt-BR", {
+                    weekday: "short",
+                    day: "2-digit",
+                  })}
                 </p>
                 <p className="mt-1 text-sm font-semibold">
-                  {d.tMax.toFixed(0)}° <span className="text-muted-foreground">{d.tMin.toFixed(0)}°</span>
+                  {d.tMax.toFixed(0)}° <span className="text-white/45">{d.tMin.toFixed(0)}°</span>
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{weatherLabel(d.code)}</p>
-                <p className="text-[11px] text-sky-500">{d.precipProb}% · {d.precipSum.toFixed(1)} mm</p>
+                <p className="mt-1 text-[11px] text-white/50">{weatherLabel(d.code)}</p>
+                <p className="text-[11px] text-sky-300">
+                  {d.precipProb}% · {d.precipSum.toFixed(1)} mm
+                </p>
               </div>
             ))}
           </div>
         </section>
 
-        <p className="mt-10 text-[11px] text-muted-foreground">
-          Fontes reais: NASA FIRMS/INPE, USGS, OpenAQ, Open-Meteo, GloFAS e NOAA NHC · Projeto
-          Integrador VI — Univesp · by GamaTec IA
+        <section className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+            Fontes reais consultadas
+          </h2>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {FONTES_REAIS.map((f) => (
+              <li key={f.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs font-medium text-white/85">{f.label}</p>
+                <p className="mt-0.5 text-[11px] text-white/45">{f.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <p className="mt-10 text-[11px] text-white/35">
+          Dados públicos em tempo real · Projeto Integrador VI — Univesp · by GamaTec IA
         </p>
       </div>
     </main>
@@ -314,8 +379,8 @@ function PrefeituraDashboard() {
 
 function Kpi({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-xl">
+      <p className="text-[11px] uppercase tracking-wide text-white/50">{label}</p>
       <p className="mt-1 text-xl font-semibold" style={tone ? { color: tone } : undefined}>
         {value}
       </p>

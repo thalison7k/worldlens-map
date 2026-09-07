@@ -1,11 +1,11 @@
 /**
- * Vigia as prefeituras com alertas ativados e publica os eventos novos
- * na Central de Atividades (notificações). Roda apenas no cliente.
+ * Vigia a ÚNICA prefeitura monitorada e publica os eventos novos na Central
+ * de Atividades (notificações). Roda apenas no cliente.
  */
 import { useGeoOS } from "@/geoos/core/store";
 import { bboxAround } from "@/geoos/core/watchpoints";
 import { buildAlerts, LEVEL_STYLE, KIND_ICON, type EnvAlert } from "@/lib/gis/alerts";
-import { loadPrefeituras, type Prefeitura } from "@/lib/prefeituras";
+import { getMonitored, type Prefeitura } from "@/lib/prefeituras";
 
 const SEEN_KEY = "geoos.prefeituras.seen";
 const POLL_MS = 5 * 60_000;
@@ -49,6 +49,7 @@ async function scan(p: Prefeitura, seen: Set<string>) {
       message: `${LEVEL_STYLE[a.level].label} · ${a.detail}`,
       source: `Prefeitura de ${p.name}${p.uf ? ` · ${p.uf}` : ""}`,
       dedupeKey: key,
+      pinned: true,
     });
   }
 }
@@ -58,20 +59,21 @@ export function startPrefeituraAlertWatch() {
   let stopped = false;
 
   const tick = async () => {
+    const p = getMonitored();
+    if (!p || stopped) return;
     const seen = loadSeen();
-    const list = loadPrefeituras().filter((p) => p.alertsEnabled !== false);
-    for (const p of list) {
-      if (stopped) return;
-      await scan(p, seen);
-    }
+    await scan(p, seen);
     saveSeen(seen);
   };
 
   const first = window.setTimeout(() => void tick(), 8000);
   const timer = window.setInterval(() => void tick(), POLL_MS);
+  const onSwitch = () => void tick();
+  window.addEventListener("geoos:prefeitura-monitorada", onSwitch);
   return () => {
     stopped = true;
     window.clearTimeout(first);
     window.clearInterval(timer);
+    window.removeEventListener("geoos:prefeitura-monitorada", onSwitch);
   };
 }

@@ -49,4 +49,7 @@ export type Notification = {
   source?: string;
   /** Chave de deduplicação (ex.: id do alerta ambiental). */
   dedupeKey?: string;
+  /** Notificação da prefeitura monitorada — fixada no topo da lista. */
+  pinned?: boolean;
+
 };

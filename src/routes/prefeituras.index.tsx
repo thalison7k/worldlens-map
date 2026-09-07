@@ -2,12 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Building2, MapPin, Plus, Search, Trash2 } from "lucide-react";
 import {
+  FONTES_REAIS,
+  getMonitoredSlug,
   loadPrefeituras,
   savePrefeituras,
+  setMonitored,
   slugify,
   type Prefeitura,
 } from "@/lib/prefeituras";
 import { searchAddress } from "@/lib/gis/geocoding";
+
 
 export const Route = createFileRoute("/prefeituras/")({
   head: () => ({
@@ -33,16 +37,26 @@ export const Route = createFileRoute("/prefeituras/")({
 
 function PrefeiturasPage() {
   const [list, setList] = useState<Prefeitura[]>([]);
+  const [monitored, setMonitoredSlug] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setList(loadPrefeituras()), []);
+  useEffect(() => {
+    setList(loadPrefeituras());
+    setMonitoredSlug(getMonitoredSlug());
+  }, []);
 
   const update = (next: Prefeitura[]) => {
     setList(next);
     savePrefeituras(next);
   };
+
+  const monitor = (slug: string | null) => {
+    setList(setMonitored(slug));
+    setMonitoredSlug(slug);
+  };
+
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -65,8 +79,9 @@ function PrefeiturasPage() {
       }
       update([
         ...list,
-        { slug, name, uf, lat: hit.lat, lng: hit.lng, radiusKm: 40, alertsEnabled: true },
+        { slug, name, uf, lat: hit.lat, lng: hit.lng, radiusKm: 40, alertsEnabled: false },
       ]);
+
       setQuery("");
     } catch {
       setError("Falha ao consultar o serviço de endereços.");
@@ -116,13 +131,22 @@ function PrefeiturasPage() {
         </form>
         {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
 
+        <p className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
+          Apenas <strong className="text-white/85">uma prefeitura</strong> fica monitorada por vez —
+          isso evita conflito de dados e notificações repetidas.
+        </p>
+
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((p) => {
-            const on = p.alertsEnabled !== false;
+            const on = monitored === p.slug;
             return (
               <article
                 key={p.slug}
-                className="group relative rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl transition-colors hover:border-[color:var(--geoos-accent)]/50"
+                className={`group relative rounded-xl border p-4 backdrop-blur-xl transition-colors ${
+                  on
+                    ? "border-[color:var(--geoos-accent)]/60 bg-[color:var(--geoos-accent)]/10"
+                    : "border-white/10 bg-white/[0.04] hover:border-[color:var(--geoos-accent)]/50"
+                }`}
               >
                 <Link to="/prefeituras/$slug" params={{ slug: p.slug }} className="block">
                   <h2 className="pr-8 text-base font-semibold">
@@ -139,19 +163,13 @@ function PrefeiturasPage() {
                 </Link>
 
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-                  <span className="text-[11px] text-white/50">Alertas nas notificações</span>
+                  <span className="text-[11px] text-white/50">Monitorar este município</span>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={on}
-                    aria-label={`${on ? "Desativar" : "Ativar"} alertas de ${p.name}`}
-                    onClick={() =>
-                      update(
-                        list.map((x) =>
-                          x.slug === p.slug ? { ...x, alertsEnabled: !on } : x,
-                        ),
-                      )
-                    }
+                    aria-label={`${on ? "Parar de monitorar" : "Monitorar"} ${p.name}`}
+                    onClick={() => monitor(on ? null : p.slug)}
                     className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium transition-colors ${
                       on
                         ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
@@ -159,14 +177,17 @@ function PrefeiturasPage() {
                     }`}
                   >
                     {on ? <Bell className="size-3" /> : <BellOff className="size-3" />}
-                    {on ? "Ativos" : "Desativados"}
+                    {on ? "Monitorada" : "Desativada"}
                   </button>
                 </div>
 
                 <button
                   type="button"
                   aria-label={`Remover ${p.name}`}
-                  onClick={() => update(list.filter((x) => x.slug !== p.slug))}
+                  onClick={() => {
+                    if (on) monitor(null);
+                    update(list.filter((x) => x.slug !== p.slug));
+                  }}
                   className="absolute right-3 top-3 rounded-md p-1.5 text-white/40 opacity-0 transition hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
                 >
                   <Trash2 className="size-4" />
@@ -176,9 +197,24 @@ function PrefeiturasPage() {
           })}
         </section>
 
+        <section className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+            Fontes reais dos painéis
+          </h2>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {FONTES_REAIS.map((f) => (
+              <li key={f.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <p className="text-xs font-medium text-white/85">{f.label}</p>
+                <p className="mt-0.5 text-[11px] text-white/45">{f.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <p className="mt-10 text-[11px] text-white/35">
           Projeto Integrador VI — Univesp · by GamaTec IA
         </p>
+
       </div>
     </main>
   );
