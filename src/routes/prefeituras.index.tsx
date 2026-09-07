@@ -2,12 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Building2, MapPin, Plus, Search, Trash2 } from "lucide-react";
 import {
+  FONTES_REAIS,
+  getMonitoredSlug,
   loadPrefeituras,
   savePrefeituras,
+  setMonitored,
   slugify,
   type Prefeitura,
 } from "@/lib/prefeituras";
 import { searchAddress } from "@/lib/gis/geocoding";
+
 
 export const Route = createFileRoute("/prefeituras/")({
   head: () => ({
