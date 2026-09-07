@@ -37,16 +37,26 @@ export const Route = createFileRoute("/prefeituras/")({
 
 function PrefeiturasPage() {
   const [list, setList] = useState<Prefeitura[]>([]);
+  const [monitored, setMonitoredSlug] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setList(loadPrefeituras()), []);
+  useEffect(() => {
+    setList(loadPrefeituras());
+    setMonitoredSlug(getMonitoredSlug());
+  }, []);
 
   const update = (next: Prefeitura[]) => {
     setList(next);
     savePrefeituras(next);
   };
+
+  const monitor = (slug: string | null) => {
+    setList(setMonitored(slug));
+    setMonitoredSlug(slug);
+  };
+
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
