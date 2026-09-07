@@ -122,6 +122,13 @@ export function ActivityCenter() {
         </button>
       </div>
 
+      {monitored && (
+        <div className="mx-3 mb-2 rounded-lg border border-[color:var(--geoos-accent)]/35 bg-[color:var(--geoos-accent)]/10 px-3 py-2">
+          <p className="text-[9px] uppercase tracking-wider text-white/50">Monitorando</p>
+          <p className="text-[11px] font-medium text-white/90">{monitored}</p>
+        </div>
+      )}
+
       <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-6">
         {list.length === 0 && (
           <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-center text-[11px] text-white/50">
@@ -135,11 +142,14 @@ export function ActivityCenter() {
               key={n.id}
               onClick={() => !n.read && markRead(n.id)}
               className={`group rounded-lg border p-3 transition-colors ${
-                n.read
-                  ? "border-white/10 bg-white/[0.03]"
-                  : "border-[color:var(--geoos-accent)]/30 bg-white/[0.06]"
+                n.pinned
+                  ? "border-[color:var(--geoos-accent)]/45 bg-[color:var(--geoos-accent)]/10"
+                  : n.read
+                    ? "border-white/10 bg-white/[0.03]"
+                    : "border-[color:var(--geoos-accent)]/30 bg-white/[0.06]"
               }`}
             >
+
               <div className="flex items-start gap-2">
                 <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: COLORS[n.level] }} />
                 <div className="min-w-0 flex-1">
