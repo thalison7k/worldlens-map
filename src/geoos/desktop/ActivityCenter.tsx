@@ -42,16 +42,27 @@ export function ActivityCenter() {
   const savedCount = notifs.filter((n) => n.saved).length;
 
   const list = useMemo(() => {
-    if (filter === "unread") return notifs.filter((n) => !n.read);
-    if (filter === "saved") return notifs.filter((n) => n.saved);
-    return notifs;
+    const base =
+      filter === "unread"
+        ? notifs.filter((n) => !n.read)
+        : filter === "saved"
+          ? notifs.filter((n) => n.saved)
+          : notifs;
+    // A prefeitura monitorada sempre aparece no topo da lista.
+    return [...base].sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.ts - a.ts);
   }, [notifs, filter]);
+
+  const monitored = useMemo(
+    () => notifs.find((n) => n.pinned && n.source)?.source ?? null,
+    [notifs],
+  );
 
   const TABS: { id: Filter; label: string; count: number }[] = [
     { id: "all", label: "Todas", count: notifs.length },
     { id: "unread", label: "Não lidas", count: unread },
     { id: "saved", label: "Salvas", count: savedCount },
   ];
+
 
   return (
     <aside
