@@ -79,8 +79,9 @@ function PrefeiturasPage() {
       }
       update([
         ...list,
-        { slug, name, uf, lat: hit.lat, lng: hit.lng, radiusKm: 40, alertsEnabled: true },
+        { slug, name, uf, lat: hit.lat, lng: hit.lng, radiusKm: 40, alertsEnabled: false },
       ]);
+
       setQuery("");
     } catch {
       setError("Falha ao consultar o serviço de endereços.");
