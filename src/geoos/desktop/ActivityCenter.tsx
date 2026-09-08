@@ -231,7 +231,9 @@ export function ActivityCenter() {
               </div>
             </div>
           );
-        })}
+            })}
+          </section>
+        ))}
       </div>
     </aside>
   );
