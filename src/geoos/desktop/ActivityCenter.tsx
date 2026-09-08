@@ -57,6 +57,25 @@ export function ActivityCenter() {
     [notifs],
   );
 
+  // Agrupa os alertas por município (fonte), mantendo a prefeitura monitorada no topo.
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof list>();
+    for (const n of list) {
+      const key = n.source ?? "Sistema";
+      const arr = map.get(key) ?? [];
+      arr.push(n);
+      map.set(key, arr);
+    }
+    return [...map.entries()]
+      .map(([name, items]) => ({
+        name,
+        items,
+        unread: items.filter((i) => !i.read).length,
+        pinned: items.some((i) => i.pinned),
+      }))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name));
+  }, [list]);
+
   const TABS: { id: Filter; label: string; count: number }[] = [
     { id: "all", label: "Todas", count: notifs.length },
     { id: "unread", label: "Não lidas", count: unread },
@@ -135,7 +154,23 @@ export function ActivityCenter() {
             Nenhuma notificação aqui.
           </p>
         )}
-        {list.map((n) => {
+        {groups.map((g) => (
+          <section key={g.name} className="space-y-2">
+            <div className="flex items-center gap-2 pt-1">
+              <h4
+                className={`text-[10px] font-semibold uppercase tracking-wider ${
+                  g.pinned ? "text-[color:var(--geoos-accent)]" : "text-white/45"
+                }`}
+              >
+                {g.name}
+              </h4>
+              <span className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-white/45">
+                {g.items.length}
+                {g.unread > 0 ? ` · ${g.unread} novas` : ""}
+              </span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+            {g.items.map((n) => {
           const Icon = ICONS[n.level];
           return (
             <div
@@ -196,7 +231,9 @@ export function ActivityCenter() {
               </div>
             </div>
           );
-        })}
+            })}
+          </section>
+        ))}
       </div>
     </aside>
   );
