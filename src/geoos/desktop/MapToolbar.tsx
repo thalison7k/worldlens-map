@@ -14,6 +14,7 @@ import type { BBox } from "@/lib/gis/simulated";
  */
 export function MapToolbar() {
   const [cursor, setCursor] = useState({ lat: 0, lng: 0 });
+  const hasCursor = useRef(false);
   const [zoom, setZoom] = useState(4);
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
