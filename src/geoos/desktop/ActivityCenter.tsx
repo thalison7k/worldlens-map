@@ -154,7 +154,23 @@ export function ActivityCenter() {
             Nenhuma notificação aqui.
           </p>
         )}
-        {list.map((n) => {
+        {groups.map((g) => (
+          <section key={g.name} className="space-y-2">
+            <div className="flex items-center gap-2 pt-1">
+              <h4
+                className={`text-[10px] font-semibold uppercase tracking-wider ${
+                  g.pinned ? "text-[color:var(--geoos-accent)]" : "text-white/45"
+                }`}
+              >
+                {g.name}
+              </h4>
+              <span className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-white/45">
+                {g.items.length}
+                {g.unread > 0 ? ` · ${g.unread} novas` : ""}
+              </span>
+              <span className="h-px flex-1 bg-white/10" />
+            </div>
+            {g.items.map((n) => {
           const Icon = ICONS[n.level];
           return (
             <div
