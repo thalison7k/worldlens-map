@@ -91,7 +91,13 @@ function PrefeituraDashboard() {
     };
   }, [pref, load]);
 
-  const counts = useMemo(() => countByLevel(alerts), [alerts]);
+  // Apenas alertas ativos: eventos registrados nas últimas 24 horas.
+  const ACTIVE_MS = 24 * 60 * 60 * 1000;
+  const activeAlerts = useMemo(
+    () => alerts.filter((a) => Date.now() - a.when <= ACTIVE_MS),
+    [alerts, ACTIVE_MS],
+  );
+  const counts = useMemo(() => countByLevel(activeAlerts), [activeAlerts]);
   const today = forecast?.days?.[0];
   const now = forecast?.hours?.[0];
   const maxFlood = useMemo(() => floods.reduce((m, f) => Math.max(m, f.risk), 0), [floods]);
