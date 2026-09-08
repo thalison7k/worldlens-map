@@ -46,13 +46,15 @@ export function MapToolbar() {
 
 
 
-  useBus("map.cursor", (p) => setCursor(p));
+  useBus("map.cursor", (p) => { hasCursor.current = true; setCursor(p); });
   useBus("map.click", (p) => setClicked(p));
   useBus("map.bbox", (b) => {
     setZoom(b.zoom);
     setBbox([b.west, b.south, b.east, b.north]);
-    // mobile has no hover cursor: fall back to the viewport center
-    if (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) {
+    // Sem ponteiro (mobile) ou antes do primeiro movimento do mouse, mostramos
+    // o centro da área visível — nunca mais o falso "0.000, 0.000".
+    const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    if (coarse || !hasCursor.current) {
       setCursor({ lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 });
     }
   });
