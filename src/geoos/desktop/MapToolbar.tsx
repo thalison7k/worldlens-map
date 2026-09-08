@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Sparkles, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
