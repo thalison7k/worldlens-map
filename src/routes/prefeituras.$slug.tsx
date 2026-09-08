@@ -113,7 +113,7 @@ function PrefeituraDashboard() {
       }
     : {};
 
-  const alertRows = alerts.map((a) => [
+  const alertRows = activeAlerts.map((a) => [
     LEVEL_STYLE[a.level].label,
     a.kind,
     a.title,
@@ -300,14 +300,14 @@ function PrefeituraDashboard() {
             Alertas ativos no município
           </h2>
           <div className="mt-3 space-y-2">
-            {alerts.length === 0 && (
+            {activeAlerts.length === 0 && (
               <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-white/50">
                 {loading
                   ? "Consultando fontes ambientais…"
                   : "Nenhum alerta ativo no raio monitorado."}
               </p>
             )}
-            {alerts.slice(0, 25).map((a) => (
+            {activeAlerts.slice(0, 25).map((a) => (
               <article
                 key={a.id}
                 className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3"
