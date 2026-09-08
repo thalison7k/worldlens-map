@@ -31,7 +31,10 @@ export const BASE_PROVIDERS: Record<string, TileProvider> = {
     // tiles com “API KEY REQUIRED / Map data not yet available”.
     url: "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/{z}/{y}/{x}.jpg",
     attribution: "Sentinel-2 cloudless © EOX · Copernicus",
-    maxZoom: 17,
+    // O WMTS público da EOX só publica até z14 — acima disso ele devolve
+    // HTTP 200 com a imagem “Zoom Level Not Supported”. Mantendo 14 como
+    // nível nativo o Leaflet faz upscaling e o erro nunca aparece.
+    maxZoom: 14,
   },
   terrain: {
     id: "terrain",
