@@ -57,6 +57,25 @@ export function ActivityCenter() {
     [notifs],
   );
 
+  // Agrupa os alertas por município (fonte), mantendo a prefeitura monitorada no topo.
+  const groups = useMemo(() => {
+    const map = new Map<string, typeof list>();
+    for (const n of list) {
+      const key = n.source ?? "Sistema";
+      const arr = map.get(key) ?? [];
+      arr.push(n);
+      map.set(key, arr);
+    }
+    return [...map.entries()]
+      .map(([name, items]) => ({
+        name,
+        items,
+        unread: items.filter((i) => !i.read).length,
+        pinned: items.some((i) => i.pinned),
+      }))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name));
+  }, [list]);
+
   const TABS: { id: Filter; label: string; count: number }[] = [
     { id: "all", label: "Todas", count: notifs.length },
     { id: "unread", label: "Não lidas", count: unread },
