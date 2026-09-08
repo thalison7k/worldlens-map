@@ -111,22 +111,22 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
     // Pausa as animações CSS das camadas durante pan/zoom (mobile e desktop)
     // — mantém o gesto fluido em qualquer plataforma.
-    {
-      const container = map.getContainer();
-      const setInteracting = (on: boolean) => {
-        container.classList.toggle("geoos-interacting", on);
-      };
-      map.on("movestart zoomstart", () => setInteracting(true));
-      map.on("moveend zoomend", () => setInteracting(false));
-    }
-
-
     // Low-frequency tick loop. Real environmental layers are mostly static;
     // running requestAnimationFrame forever was wasting main-thread time.
+    // Um único par de listeners controla tanto a classe CSS quanto o tick —
+    // antes havia dois pares registrados, dobrando o trabalho a cada gesto.
+    const container = map.getContainer();
     let last = performance.now();
     let interacting = false;
-    map.on("movestart zoomstart", () => { interacting = true; });
-    map.on("moveend zoomend", () => { interacting = false; last = performance.now(); });
+    map.on("movestart zoomstart", () => {
+      interacting = true;
+      container.classList.add("geoos-interacting");
+    });
+    map.on("moveend zoomend", () => {
+      interacting = false;
+      last = performance.now();
+      container.classList.remove("geoos-interacting");
+    });
     const tickIv = setInterval(() => {
       // aba em segundo plano ou gesto em andamento → não gasta main thread
       if (document.hidden || interacting) { last = performance.now(); return; }
