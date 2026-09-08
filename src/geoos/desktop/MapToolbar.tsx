@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, ChevronsLeft, ChevronsRight, Compass, Copy, Crosshair, Download, Loader2, LocateFixed, Maximize2, MousePointer2, Ruler, Sparkles, Square } from "lucide-react";
 import { bus } from "@/geoos/core/bus";
 import { useBus } from "@/geoos/core/useBus";
@@ -14,6 +14,7 @@ import type { BBox } from "@/lib/gis/simulated";
  */
 export function MapToolbar() {
   const [cursor, setCursor] = useState({ lat: 0, lng: 0 });
+  const hasCursor = useRef(false);
   const [zoom, setZoom] = useState(4);
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
@@ -46,13 +47,15 @@ export function MapToolbar() {
 
 
 
-  useBus("map.cursor", (p) => setCursor(p));
+  useBus("map.cursor", (p) => { hasCursor.current = true; setCursor(p); });
   useBus("map.click", (p) => setClicked(p));
   useBus("map.bbox", (b) => {
     setZoom(b.zoom);
     setBbox([b.west, b.south, b.east, b.north]);
-    // mobile has no hover cursor: fall back to the viewport center
-    if (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches) {
+    // Sem ponteiro (mobile) ou antes do primeiro movimento do mouse, mostramos
+    // o centro da área visível — nunca mais o falso "0.000, 0.000".
+    const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    if (coarse || !hasCursor.current) {
       setCursor({ lat: (b.north + b.south) / 2, lng: (b.east + b.west) / 2 });
     }
   });
