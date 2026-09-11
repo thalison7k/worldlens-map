@@ -26,7 +26,7 @@ export function QuickLayersBar() {
   };
 
   return (
-    <div className="pointer-events-none fixed left-0 right-0 top-12 z-10 flex justify-center px-10 duration-500 animate-in fade-in slide-in-from-top-3 sm:top-14 md:left-1/2 md:right-auto md:-translate-x-1/2 md:px-0">
+    <div className="pointer-events-none fixed left-0 right-0 top-[3.25rem] z-10 flex justify-center px-10 duration-500 animate-in fade-in slide-in-from-top-3 sm:top-14 md:left-1/2 md:right-auto md:-translate-x-1/2 md:px-0">
       <div
         data-geoos-obstacle
         className="geoos-scroll pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-[color:var(--geoos-surface)]/70 px-1.5 py-1 shadow backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:shadow-lg md:px-2"

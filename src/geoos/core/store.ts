@@ -78,13 +78,18 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
     const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
     const isMobile = vw < 640;
+    const topClearance = isMobile ? 102 : 108;
+    const bottomClearance = isMobile ? 94 : 86;
     // Em telas pequenas a janela ocupa a área útil entre a topbar e o dock.
     const width = isMobile ? vw - 12 : Math.min(defaults?.width ?? 720, vw - 24);
     const height = isMobile
-      ? Math.max(260, vh - 44 - 88 - 12)
-      : Math.min(defaults?.height ?? 480, vh - 120);
+      ? Math.max(260, vh - topClearance - bottomClearance)
+      : Math.min(defaults?.height ?? 480, vh - topClearance - bottomClearance);
     const x = isMobile ? 6 : Math.max(8, Math.min(defaults?.x ?? 120 + Math.random() * 80, vw - width - 8));
-    const y = isMobile ? 50 : Math.max(48, Math.min(defaults?.y ?? 100 + Math.random() * 60, vh - height - 24));
+    const y = Math.max(
+      topClearance,
+      Math.min(defaults?.y ?? topClearance + Math.random() * 40, vh - bottomClearance - height),
+    );
     const w: WindowState = {
       appId,
       x,

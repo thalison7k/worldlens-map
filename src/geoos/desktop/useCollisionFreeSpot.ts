@@ -99,7 +99,10 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
         }
       }
 
-      setPos((p) => (Math.abs(p.left - best.left) < 1 && Math.abs(p.top - best.top) < 1 ? p : best));
+      setPos((p) => {
+        const distance = Math.hypot(p.left - best.left, p.top - best.top);
+        return distance < 20 ? p : best;
+      });
      } catch {
       /* posicionamento é best-effort */
      }
