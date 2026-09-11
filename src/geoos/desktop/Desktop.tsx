@@ -23,9 +23,11 @@ export function Desktop() {
     startThemeEngine();
     // Auto-open the single functional module so users see it immediately.
     const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+    const top = isMobile ? 102 : 108;
+    const dockClearance = isMobile ? 94 : 86;
     openApp("layers", isMobile
-      ? { x: 0, y: 44, width: window.innerWidth, height: window.innerHeight - 44 - 72 - 38, maximized: false }
-      : { x: window.innerWidth - 400, y: 60, width: 380, height: 620 });
+      ? { x: 6, y: top, width: window.innerWidth - 12, height: Math.max(260, window.innerHeight - top - dockClearance), maximized: false }
+      : { x: window.innerWidth - 400, y: top, width: 380, height: Math.min(620, window.innerHeight - top - dockClearance) });
   }, [openApp]);
 
   useEffect(() => {
