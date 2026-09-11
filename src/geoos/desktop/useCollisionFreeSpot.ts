@@ -99,7 +99,10 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
         }
       }
 
-      setPos((p) => (Math.abs(p.left - best.left) < 1 && Math.abs(p.top - best.top) < 1 ? p : best));
+      setPos((p) => {
+        const distance = Math.hypot(p.left - best.left, p.top - best.top);
+        return distance < 20 ? p : best;
+      });
      } catch {
       /* posicionamento é best-effort */
      }
@@ -115,16 +118,24 @@ export function useCollisionFreeSpot<T extends HTMLElement>() {
     window.addEventListener("orientationchange", schedule);
     const ro = new ResizeObserver(schedule);
     if (ref.current) ro.observe(ref.current);
-    const mo = new MutationObserver(schedule);
-    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
-    const iv = window.setInterval(schedule, 1000);
+    const observeObstacles = () => {
+      document.querySelectorAll<HTMLElement>("[data-geoos-obstacle]").forEach((node) => ro.observe(node));
+      schedule();
+    };
+    observeObstacles();
+    // Recalcula ao terminar gestos e em baixa frequência. Evita observar todas
+    // as mutações de estilo dos tiles do Leaflet durante pan/zoom.
+    window.addEventListener("pointerup", schedule);
+    window.addEventListener("transitionend", schedule);
+    const iv = window.setInterval(observeObstacles, 2000);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("orientationchange", schedule);
+      window.removeEventListener("pointerup", schedule);
+      window.removeEventListener("transitionend", schedule);
       ro.disconnect();
-      mo.disconnect();
       window.clearInterval(iv);
     };
   }, []);

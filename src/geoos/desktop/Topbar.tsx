@@ -52,7 +52,7 @@ export function Topbar() {
         <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-white/60">
           GeoOS · Ambiental
         </span>
-        <GamaTecBadge className="sm:hidden" />
+        <GamaTecBadge className="hidden min-[480px]:block sm:hidden" />
         <span className="hidden text-white/40 sm:inline">/</span>
         <span className="hidden rounded-md px-2 py-1 text-white/80 sm:inline" style={{ background: `hsl(${ws?.accent} / 0.15)`, color: `hsl(${ws?.accent})` }}>
           {ws?.name}
@@ -61,7 +61,7 @@ export function Topbar() {
 
       <button
         onClick={() => setPalette(true)}
-        className="pointer-events-auto ml-2 flex flex-1 max-w-md items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-left text-xs text-white/50 hover:bg-white/[0.06] sm:ml-4"
+        className="pointer-events-auto ml-0 flex min-w-0 flex-1 max-w-md items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-left text-xs text-white/50 hover:bg-white/[0.06] sm:ml-4 sm:px-3"
       >
         <Search className="h-3.5 w-3.5" />
         <span className="truncate">Buscar lugar ou camada…</span>
@@ -94,13 +94,13 @@ export function Topbar() {
             // sem este evento o Theme Engine nunca aplicava os tokens/mapa
             bus.emit("theme.change", { theme: next });
           }}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 transition-colors hover:bg-white/10"
+          className="hidden h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 transition-colors hover:bg-white/10 sm:grid"
           title="Alternar Light/Dark"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
 
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setThemePalette((v) => !v)}
             className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/10"
@@ -157,7 +157,7 @@ export function Topbar() {
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-red-400" />
           )}
         </button>
-        <span className="ml-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-white/70">
+        <span className="ml-2 hidden rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-white/70 md:inline">
           {time.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>

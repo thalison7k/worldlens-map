@@ -14,7 +14,7 @@ export function MinimizedTray() {
   if (minimized.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-[4.75rem] left-1/2 z-40 w-[min(96vw,44rem)] -translate-x-1/2 px-2">
+    <div className="pointer-events-none fixed bottom-[calc(4.75rem+var(--geoos-safe-bottom,0px))] left-1/2 z-40 w-[min(96vw,44rem)] -translate-x-1/2 px-2">
       <div
         data-geoos-obstacle
         className="geoos-scroll pointer-events-auto flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-white/10 bg-[color:var(--geoos-surface)]/70 px-2 py-1.5 shadow-2xl backdrop-blur-xl"

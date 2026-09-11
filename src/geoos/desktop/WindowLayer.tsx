@@ -23,15 +23,17 @@ export function AppWindow({ state }: { state: WindowState }) {
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   const isMobile = vw < 640;
   const isMax = state.maximized;
+  const topClearance = isMobile ? 102 : 108;
+  const bottomClearance = isMobile ? 94 : 86;
   const clampedW = Math.min(state.width, vw - 16);
-  const clampedH = Math.min(state.height, vh - 100);
+  const clampedH = Math.min(state.height, Math.max(160, vh - topClearance - bottomClearance));
   const geometry = isMax
     ? isMobile
-      ? { x: 0, y: 44, width: vw, height: vh - 44 - 76 }
-      : { x: 8, y: 56, width: vw - 96, height: vh - 140 }
+      ? { x: 6, y: topClearance, width: vw - 12, height: Math.max(160, vh - topClearance - bottomClearance) }
+      : { x: 56, y: topClearance, width: vw - 64, height: Math.max(160, vh - topClearance - bottomClearance) }
     : {
         x: Math.min(Math.max(state.x, 0), Math.max(0, vw - clampedW)),
-        y: Math.min(Math.max(state.y, 0), Math.max(0, vh - 80)),
+        y: Math.min(Math.max(state.y, topClearance), Math.max(topClearance, vh - bottomClearance - clampedH)),
         width: clampedW,
         height: clampedH,
       };

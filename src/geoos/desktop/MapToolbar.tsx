@@ -13,13 +13,17 @@ import type { BBox } from "@/lib/gis/simulated";
  * MapKernel via Event Bus. Nenhuma dependência direta com o Leaflet.
  */
 export function MapToolbar() {
-  const [cursor, setCursor] = useState({ lat: 0, lng: 0 });
+  const initialMap = getMapSnapshot();
+  const [cursor, setCursor] = useState(() => ({
+    lat: (initialMap.bbox[1] + initialMap.bbox[3]) / 2,
+    lng: (initialMap.bbox[0] + initialMap.bbox[2]) / 2,
+  }));
   const hasCursor = useRef(false);
   const [zoom, setZoom] = useState(4);
   const [clicked, setClicked] = useState<{ lat: number; lng: number } | null>(null);
   const [measure, setMeasure] = useState<"off" | "distance" | "area">("off");
   const [result, setResult] = useState<string | null>(null);
-  const [bbox, setBbox] = useState<BBox>(() => getMapSnapshot().bbox);
+  const [bbox, setBbox] = useState<BBox>(() => initialMap.bbox);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [dlss, setDlss] = useState<DLSSMode>(() => loadMode());
