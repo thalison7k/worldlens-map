@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      brazilian_municipalities: {
+        Row: {
+          created_at: string
+          ibge_code: number
+          lat: number
+          lng: number
+          name: string
+          radius_km: number
+          slug: string
+          uf: string
+        }
+        Insert: {
+          created_at?: string
+          ibge_code: number
+          lat: number
+          lng: number
+          name: string
+          radius_km?: number
+          slug: string
+          uf: string
+        }
+        Update: {
+          created_at?: string
+          ibge_code?: number
+          lat?: number
+          lng?: number
+          name?: string
+          radius_km?: number
+          slug?: string
+          uf?: string
+        }
+        Relationships: []
+      }
+      global_monitoring_config: {
+        Row: {
+          municipality_code: number | null
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          municipality_code?: number | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          municipality_code?: number | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_monitoring_config_municipality_code_fkey"
+            columns: ["municipality_code"]
+            isOneToOne: false
+            referencedRelation: "brazilian_municipalities"
+            referencedColumns: ["ibge_code"]
+          },
+        ]
+      }
       sensor_readings: {
         Row: {
           accuracy_m: number | null
@@ -73,7 +132,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      set_global_monitored_municipality: {
+        Args: { _municipality_code: number }
+        Returns: {
+          municipality_code: number | null
+          singleton: boolean
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "global_monitoring_config"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never

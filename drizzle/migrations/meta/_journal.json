@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789312299492,
+      "tag": "0000_create_national_municipalities_and_global_monitoring",
+      "breakpoints": true
+    }
+  ]
+}
