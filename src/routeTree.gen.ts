@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrefeiturasIndexRouteImport } from './routes/prefeituras.index'
 import { Route as PrefeiturasSlugRouteImport } from './routes/prefeituras.$slug'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiPublicTornadoesRouteImport } from './routes/api/public/tornadoes'
 import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
 import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
 import { Route as ApiPublicEnsoRouteImport } from './routes/api/public/enso'
@@ -42,6 +43,11 @@ const PrefeiturasSlugRoute = PrefeiturasSlugRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTornadoesRoute = ApiPublicTornadoesRouteImport.update({
+  id: '/api/public/tornadoes',
+  path: '/api/public/tornadoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicOpenaqRoute = ApiPublicOpenaqRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
+  '/api/public/tornadoes': typeof ApiPublicTornadoesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
+  '/api/public/tornadoes': typeof ApiPublicTornadoesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/api/public/enso': typeof ApiPublicEnsoRoute
   '/api/public/firms': typeof ApiPublicFirmsRoute
   '/api/public/openaq': typeof ApiPublicOpenaqRoute
+  '/api/public/tornadoes': typeof ApiPublicTornadoesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
+    | '/api/public/tornadoes'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
+    | '/api/public/tornadoes'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/api/public/enso'
     | '/api/public/firms'
     | '/api/public/openaq'
+    | '/api/public/tornadoes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   ApiPublicEnsoRoute: typeof ApiPublicEnsoRoute
   ApiPublicFirmsRoute: typeof ApiPublicFirmsRoute
   ApiPublicOpenaqRoute: typeof ApiPublicOpenaqRoute
+  ApiPublicTornadoesRoute: typeof ApiPublicTornadoesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -182,6 +195,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/tornadoes': {
+      id: '/api/public/tornadoes'
+      path: '/api/public/tornadoes'
+      fullPath: '/api/public/tornadoes'
+      preLoaderRoute: typeof ApiPublicTornadoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/openaq': {
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEnsoRoute: ApiPublicEnsoRoute,
   ApiPublicFirmsRoute: ApiPublicFirmsRoute,
   ApiPublicOpenaqRoute: ApiPublicOpenaqRoute,
+  ApiPublicTornadoesRoute: ApiPublicTornadoesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
