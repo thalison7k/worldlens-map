@@ -69,9 +69,9 @@ export async function getMonitoredCloud() {
   return data ? mapMunicipality(data as MunicipalityRow) : null;
 }
 
-export async function setMonitoredCloud(ibgeCode: number) {
+export async function setMonitoredCloud(ibgeCode: number | null) {
   const { error } = await supabase.rpc("set_global_monitored_municipality", {
-    _municipality_code: ibgeCode,
+    _municipality_code: ibgeCode as number,
   });
   if (error) throw error;
   window.dispatchEvent(new CustomEvent("geoos:prefeitura-monitorada", { detail: ibgeCode }));

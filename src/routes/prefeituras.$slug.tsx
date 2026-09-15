@@ -11,11 +11,9 @@ import {
 } from "lucide-react";
 import {
   FONTES_REAIS,
-  getMonitoredSlug,
-  getPrefeitura,
-  setMonitored,
   type Prefeitura,
 } from "@/lib/prefeituras";
+import { getMonitoredCloud, getPrefeituraCloud, setMonitoredCloud, type CloudPrefeitura } from "@/lib/prefeituras-cloud";
 import { bboxAround } from "@/geoos/core/watchpoints";
 import { buildAlerts, countByLevel, KIND_ICON, LEVEL_STYLE, type EnvAlert } from "@/lib/gis/alerts";
 import { fetchForecast, weatherLabel, type ForecastBundle } from "@/lib/gis/providers/openmeteo";
@@ -46,18 +44,27 @@ export const Route = createFileRoute("/prefeituras/$slug")({
 
 function PrefeituraDashboard() {
   const { slug } = useParams({ from: "/prefeituras/$slug" });
-  const [pref, setPref] = useState<Prefeitura | null | undefined>(undefined);
+  const [pref, setPref] = useState<CloudPrefeitura | null | undefined>(undefined);
   const [monitored, setMonitoredSlug] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<EnvAlert[]>([]);
   const [forecast, setForecast] = useState<ForecastBundle | null>(null);
   const [floods, setFloods] = useState<FloodCell[]>([]);
   const [loading, setLoading] = useState(true);
   const [updated, setUpdated] = useState<number | null>(null);
+  const [savingMonitor, setSavingMonitor] = useState(false);
+  const [monitorError, setMonitorError] = useState<string | null>(null);
   const alive = useRef(true);
 
   useEffect(() => {
-    setPref(getPrefeitura(slug));
-    setMonitoredSlug(getMonitoredSlug());
+    let active = true;
+    void Promise.all([getPrefeituraCloud(slug), getMonitoredCloud()])
+      .then(([municipality, selected]) => {
+        if (!active) return;
+        setPref(municipality);
+        setMonitoredSlug(selected?.slug ?? null);
+      })
+      .catch(() => { if (active) setPref(null); });
+    return () => { active = false; };
   }, [slug]);
 
   const load = useCallback(async (p: Prefeitura) => {
@@ -239,12 +246,20 @@ function PrefeituraDashboard() {
               type="button"
               role="switch"
               aria-checked={isMonitored}
-              onClick={() => {
-                const next = isMonitored ? null : pref.slug;
-                setMonitored(next);
-                setMonitoredSlug(next);
+              disabled={savingMonitor}
+              onClick={async () => {
+                setSavingMonitor(true);
+                setMonitorError(null);
+                try {
+                  await setMonitoredCloud(isMonitored ? null : pref.ibgeCode);
+                  setMonitoredSlug(isMonitored ? null : pref.slug);
+                } catch {
+                  setMonitorError("Não foi possível salvar o monitoramento.");
+                } finally {
+                  setSavingMonitor(false);
+                }
               }}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              className={`inline-flex min-h-12 touch-manipulation items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors active:scale-95 disabled:opacity-50 ${
                 isMonitored
                   ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
                   : "border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/10"
@@ -255,24 +270,25 @@ function PrefeituraDashboard() {
             </button>
             <button
               onClick={() => void load(pref)}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
+                className="inline-flex min-h-12 touch-manipulation items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60 active:scale-95"
             >
               <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Atualizar
             </button>
             <button
               onClick={onExcel}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
+              className="inline-flex min-h-12 touch-manipulation items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60 active:scale-95"
             >
               <FileSpreadsheet className="size-4" /> Excel
             </button>
             <button
               onClick={onWord}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60"
+              className="inline-flex min-h-12 touch-manipulation items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm hover:border-[color:var(--geoos-accent)]/60 active:scale-95"
             >
               <FileText className="size-4" /> Word
             </button>
           </div>
         </header>
+        {monitorError && <p className="mt-3 text-xs text-red-300">{monitorError}</p>}
 
         {monitored && !isMonitored && (
           <p className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
