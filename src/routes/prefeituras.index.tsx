@@ -1,16 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Building2, MapPin, Plus, Search, Trash2 } from "lucide-react";
+import { Bell, BellOff, Building2, ChevronLeft, ChevronRight, MapPin, Search } from "lucide-react";
+import { FONTES_REAIS } from "@/lib/prefeituras";
 import {
-  FONTES_REAIS,
-  getMonitoredSlug,
-  loadPrefeituras,
-  savePrefeituras,
-  setMonitored,
-  slugify,
-  type Prefeitura,
-} from "@/lib/prefeituras";
-import { searchAddress } from "@/lib/gis/geocoding";
+  getMonitoredCloud,
+  searchPrefeituras,
+  setMonitoredCloud,
+  type CloudPrefeitura,
+} from "@/lib/prefeituras-cloud";
 
 
 export const Route = createFileRoute("/prefeituras/")({
@@ -36,57 +33,50 @@ export const Route = createFileRoute("/prefeituras/")({
 });
 
 function PrefeiturasPage() {
-  const [list, setList] = useState<Prefeitura[]>([]);
+  const [list, setList] = useState<CloudPrefeitura[]>([]);
   const [monitored, setMonitoredSlug] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [savingCode, setSavingCode] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setList(loadPrefeituras());
-    setMonitoredSlug(getMonitoredSlug());
-  }, []);
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const [{ list: rows, count }, selected] = await Promise.all([
+          searchPrefeituras(query, page),
+          getMonitoredCloud(),
+        ]);
+        if (!active) return;
+        setList(rows);
+        setTotal(count);
+        setMonitoredSlug(selected?.slug ?? null);
+      } catch {
+        if (active) setError("Não foi possível carregar os municípios agora.");
+      } finally {
+        if (active) setBusy(false);
+      }
+    }, query ? 250 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [query, page]);
 
-  const update = (next: Prefeitura[]) => {
-    setList(next);
-    savePrefeituras(next);
-  };
-
-  const monitor = (slug: string | null) => {
-    setList(setMonitored(slug));
-    setMonitoredSlug(slug);
-  };
-
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setBusy(true);
+  async function monitor(prefeitura: CloudPrefeitura, enabled: boolean) {
+    setSavingCode(prefeitura.ibgeCode);
     setError(null);
+    setBusy(true);
     try {
-      const [hit] = await searchAddress(query.trim());
-      if (!hit) {
-        setError("Município não encontrado. Tente 'Cidade, UF' ou um CEP.");
-        return;
-      }
-      const name =
-        hit.address.city || hit.address.town || hit.address.village || hit.displayName.split(",")[0];
-      const uf = hit.address.state;
-      const slug = slugify(name, uf);
-      if (list.some((p) => p.slug === slug)) {
-        setError("Esta prefeitura já está cadastrada.");
-        return;
-      }
-      update([
-        ...list,
-        { slug, name, uf, lat: hit.lat, lng: hit.lng, radiusKm: 40, alertsEnabled: false },
-      ]);
-
-      setQuery("");
+      await setMonitoredCloud(enabled ? prefeitura.ibgeCode : null);
+      setMonitoredSlug(enabled ? prefeitura.slug : null);
     } catch {
-      setError("Falha ao consultar o serviço de endereços.");
+      setError("Não foi possível salvar o monitoramento. Tente novamente.");
     } finally {
       setBusy(false);
+      setSavingCode(null);
     }
   }
 
@@ -110,25 +100,20 @@ function PrefeiturasPage() {
           </div>
         </header>
 
-        <form onSubmit={add} className="mt-6 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/40" />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Adicionar prefeitura (ex.: Mogi das Cruzes, SP ou CEP)"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/35 focus:border-[color:var(--geoos-accent)]/60"
+              onChange={(e) => { setQuery(e.target.value); setPage(0); }}
+              placeholder="Buscar entre todos os municípios (nome ou UF)"
+              className="min-h-12 w-full rounded-lg border border-white/10 bg-white/[0.04] py-3 pl-9 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/35 focus:border-[color:var(--geoos-accent)]/60"
             />
           </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-[color:var(--geoos-accent)]/40 bg-[color:var(--geoos-accent)]/20 px-4 py-2.5 text-sm font-medium text-white hover:bg-[color:var(--geoos-accent)]/30 disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            {busy ? "Buscando…" : "Adicionar"}
-          </button>
-        </form>
+          <span className="inline-flex min-h-12 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-4 text-xs text-white/55">
+            {busy ? "Buscando…" : `${total.toLocaleString("pt-BR")} municípios`}
+          </span>
+        </div>
         {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
 
         <p className="mt-4 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
@@ -169,8 +154,9 @@ function PrefeiturasPage() {
                     role="switch"
                     aria-checked={on}
                     aria-label={`${on ? "Parar de monitorar" : "Monitorar"} ${p.name}`}
-                    onClick={() => monitor(on ? null : p.slug)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium transition-colors ${
+                    disabled={savingCode !== null}
+                    onClick={() => void monitor(p, !on)}
+                    className={`inline-flex min-h-11 min-w-28 touch-manipulation items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors active:scale-95 disabled:opacity-50 ${
                       on
                         ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
                         : "border-white/10 bg-white/[0.04] text-white/45"
@@ -181,21 +167,20 @@ function PrefeiturasPage() {
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  aria-label={`Remover ${p.name}`}
-                  onClick={() => {
-                    if (on) monitor(null);
-                    update(list.filter((x) => x.slug !== p.slug));
-                  }}
-                  className="absolute right-3 top-3 rounded-md p-1.5 text-white/40 opacity-0 transition hover:bg-red-500/15 hover:text-red-300 group-hover:opacity-100"
-                >
-                  <Trash2 className="size-4" />
-                </button>
               </article>
             );
           })}
         </section>
+
+        <nav className="mt-5 flex items-center justify-between" aria-label="Paginação de municípios">
+          <button type="button" disabled={page === 0 || busy} onClick={() => setPage((value) => Math.max(0, value - 1))} className="inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-lg border border-white/10 px-3 text-sm text-white/70 disabled:opacity-30">
+            <ChevronLeft className="size-4" /> Anterior
+          </button>
+          <span className="text-xs text-white/45">Página {page + 1} de {Math.max(1, Math.ceil(total / 60))}</span>
+          <button type="button" disabled={(page + 1) * 60 >= total || busy} onClick={() => setPage((value) => value + 1)} className="inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-lg border border-white/10 px-3 text-sm text-white/70 disabled:opacity-30">
+            Próxima <ChevronRight className="size-4" />
+          </button>
+        </nav>
 
         <section className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-white/60">

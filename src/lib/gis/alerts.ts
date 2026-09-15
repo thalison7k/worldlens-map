@@ -3,6 +3,7 @@ import { fetchEarthquakes } from "@/lib/gis/providers/usgs";
 import { fetchAirStations } from "@/lib/gis/providers/openaq";
 import { fetchCyclones, cycloneCategory, bearingLabel } from "@/lib/gis/providers/cyclones";
 import { fetchFloodRisk, FLOOD_LEVEL_LABEL } from "@/lib/gis/providers/floods";
+import { fetchTornadoWarnings } from "@/lib/gis/providers/tornadoes";
 import type { BBox } from "@/lib/gis/simulated";
 
 /**
@@ -14,7 +15,7 @@ export type AlertLevel = "critico" | "alto" | "moderado";
 
 export type EnvAlert = {
   id: string;
-  kind: "ciclone" | "queimada" | "sismo" | "ar" | "enchente";
+  kind: "ciclone" | "tornado" | "queimada" | "sismo" | "ar" | "enchente";
   level: AlertLevel;
   title: string;
   detail: string;
@@ -33,7 +34,7 @@ export const LEVEL_STYLE: Record<AlertLevel, { color: string; label: string }> =
 };
 
 export const KIND_ICON: Record<EnvAlert["kind"], string> = {
-  ciclone: "🌀", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
+  ciclone: "🌀", tornado: "🌪️", queimada: "🔥", sismo: "🌐", ar: "🌫️", enchente: "🌊",
 };
 
 export function insideBox(b: BBox, lat: number, lng: number) {
@@ -52,8 +53,9 @@ export function distKm(a: { lat: number; lng: number }, b: { lat: number; lng: n
 
 /** Varre todas as fontes no bbox e devolve os alertas ordenados por severidade. */
 export async function buildAlerts(box: BBox, focus: AlertFocus): Promise<EnvAlert[]> {
-  const [cyclones, fires, quakes, air, floods] = await Promise.all([
+  const [cyclones, tornadoes, fires, quakes, air, floods] = await Promise.all([
     fetchCyclones().catch(() => []),
+    fetchTornadoWarnings().catch(() => []),
     fetchFires(box, 1).catch(() => []),
     fetchEarthquakes("day").catch(() => []),
     fetchAirStations(box, 120).catch(() => []),
@@ -61,6 +63,19 @@ export async function buildAlerts(box: BBox, focus: AlertFocus): Promise<EnvAler
   ]);
 
   const out: EnvAlert[] = [];
+
+  for (const tornado of tornadoes) {
+    out.push({
+      id: `tornado:${tornado.id}`,
+      kind: "tornado",
+      level: tornado.severity.toLowerCase() === "extreme" ? "critico" : "alto",
+      title: tornado.title,
+      detail: `${tornado.area} · ${tornado.source}`,
+      lat: tornado.lat,
+      lng: tornado.lng,
+      when: tornado.onset ? new Date(tornado.onset).getTime() : Date.now(),
+    });
+  }
 
   for (const s of cyclones) {
     const { label, cat } = cycloneCategory(s.intensityKt);

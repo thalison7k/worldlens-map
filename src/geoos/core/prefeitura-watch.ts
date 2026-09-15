@@ -5,7 +5,8 @@
 import { useGeoOS } from "@/geoos/core/store";
 import { bboxAround } from "@/geoos/core/watchpoints";
 import { buildAlerts, LEVEL_STYLE, KIND_ICON, type EnvAlert } from "@/lib/gis/alerts";
-import { getMonitored, type Prefeitura } from "@/lib/prefeituras";
+import type { Prefeitura } from "@/lib/prefeituras";
+import { getMonitoredCloud } from "@/lib/prefeituras-cloud";
 
 const SEEN_KEY = "geoos.prefeituras.seen";
 const POLL_MS = 5 * 60_000;
@@ -59,7 +60,7 @@ export function startPrefeituraAlertWatch() {
   let stopped = false;
 
   const tick = async () => {
-    const p = getMonitored();
+    const p = await getMonitoredCloud().catch(() => null);
     if (!p || stopped) return;
     const seen = loadSeen();
     await scan(p, seen);

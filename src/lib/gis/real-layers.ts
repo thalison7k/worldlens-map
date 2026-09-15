@@ -8,6 +8,7 @@ import { fetchFires, fireColor } from "./providers/firms";
 import { fetchCyclones, cycloneCategory, bearingLabel, stormKind } from "./providers/cyclones";
 import { fetchReadings } from "@/lib/iot/cloud";
 import { fetchFloodRisk, FLOOD_LEVEL_COLOR, FLOOD_LEVEL_LABEL } from "./providers/floods";
+import { fetchTornadoWarnings } from "./providers/tornadoes";
 
 import type { LayerDef, BuildCtx, BuiltLayer } from "./layer-defs";
 
@@ -591,6 +592,44 @@ export const REAL_LAYER_DEFS: LayerDef[] = [
       };
     },
 
+  },
+  {
+    id: "tornadoes" as never,
+    label: "Tornados ativos (NOAA/NWS)",
+    icon: "🌪️",
+    category: "clima",
+    order: 98,
+    defaultVisible: true,
+    defaultOpacity: 1,
+    legend: [
+      { color: "#dc2626", label: "Aviso ativo" },
+      { color: "#f97316", label: "Área sob risco" },
+    ],
+    build: asyncGroup(async (_ctx, group) => {
+      const warnings = await fetchTornadoWarnings();
+      const shapes: L.Layer[] = [];
+      for (const warning of warnings) {
+        const color = warning.severity.toLowerCase() === "extreme" ? "#dc2626" : "#f97316";
+        const popup = `<div style="min-width:240px"><div style="font-weight:700;font-size:14px;color:${color}">🌪️ ${warning.title}</div><div style="font-size:11px;color:#94a3b8;line-height:1.7;margin-top:6px"><b>Área:</b> ${warning.area}<br/><b>Urgência:</b> ${warning.urgency}<br/><b>Certeza:</b> ${warning.certainty}<br/><b>Expira:</b> ${warning.expires ? new Date(warning.expires).toLocaleString("pt-BR") : "n/d"}<br/><b>Fonte:</b> ${warning.source}</div></div>`;
+        if (warning.polygon.length >= 3) {
+          const polygon = L.polygon(warning.polygon, { color, fillColor: color, fillOpacity: 0.2, weight: 2 }).bindPopup(popup);
+          polygon.addTo(group);
+          shapes.push(polygon);
+        }
+        const marker = L.marker([warning.lat, warning.lng], {
+          icon: L.divIcon({ className: "geoos-tornado", html: '<div style="font-size:28px">🌪️</div>', iconSize: [34, 34], iconAnchor: [17, 17] }),
+        }).bindPopup(popup);
+        marker.addTo(group);
+        shapes.push(marker);
+      }
+      return {
+        count: warnings.length,
+        setOpacity: (opacity) => shapes.forEach((shape) => {
+          if (shape instanceof L.Path) shape.setStyle({ opacity, fillOpacity: 0.2 * opacity });
+          if (shape instanceof L.Marker) shape.setOpacity(opacity);
+        }),
+      };
+    }),
   },
   {
     id: "cyclones" as never,

@@ -35,6 +35,7 @@ export const FONTES_REAIS = [
   { id: "openmeteo", label: "Open-Meteo", detail: "Previsão horária e de 7 dias" },
   { id: "glofas", label: "Copernicus GloFAS", detail: "Chuva acumulada e risco de alagamento" },
   { id: "nhc", label: "NOAA NHC", detail: "Ciclones e furacões ativos" },
+  { id: "nws", label: "NOAA/NWS", detail: "Avisos oficiais de tornados ativos" },
 ] as const;
 
 export function slugify(name: string, uf?: string) {
