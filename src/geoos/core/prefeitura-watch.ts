@@ -7,6 +7,7 @@ import { bboxAround } from "@/geoos/core/watchpoints";
 import { buildAlerts, LEVEL_STYLE, KIND_ICON, type EnvAlert } from "@/lib/gis/alerts";
 import type { Prefeitura } from "@/lib/prefeituras";
 import { getMonitoredCloud } from "@/lib/prefeituras-cloud";
+import { recordHistory } from "@/geoos/core/alert-history";
 
 const SEEN_KEY = "geoos.prefeituras.seen";
 const POLL_MS = 5 * 60_000;
@@ -40,6 +41,20 @@ async function scan(p: Prefeitura, seen: Set<string>) {
     () => [] as EnvAlert[],
   );
   const add = useGeoOS.getState().addNotification;
+  const muni = `${p.name}${p.uf ? ` · ${p.uf}` : ""}`;
+  const now = Date.now();
+  recordHistory(
+    alerts.slice(0, 30).map((a) => ({
+      key: `${p.slug}:${a.id}`,
+      municipality: muni,
+      kind: a.kind,
+      level: a.level,
+      title: `${KIND_ICON[a.kind]} ${a.title}`,
+      detail: a.detail,
+      eventTs: a.when,
+      detectedTs: now,
+    })),
+  );
   for (const a of alerts.slice(0, 12)) {
     const key = `${p.slug}:${a.id}`;
     if (seen.has(key)) continue;
