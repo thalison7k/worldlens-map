@@ -9,25 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as PrefeiturasIndexRouteImport } from './routes/prefeituras.index'
 import { Route as PrefeiturasSlugRouteImport } from './routes/prefeituras.$slug'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as ApiPublicTornadoesRouteImport } from './routes/api/public/tornadoes'
-import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
-import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
-import { Route as ApiPublicEnsoRouteImport } from './routes/api/public/enso'
 import { Route as ApiPublicCyclonesRouteImport } from './routes/api/public/cyclones'
+import { Route as ApiPublicEnsoRouteImport } from './routes/api/public/enso'
+import { Route as ApiPublicFirmsRouteImport } from './routes/api/public/firms'
+import { Route as ApiPublicOpenaqRouteImport } from './routes/api/public/openaq'
+import { Route as ApiPublicTornadoesRouteImport } from './routes/api/public/tornadoes'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrefeiturasIndexRoute = PrefeiturasIndexRouteImport.update({
@@ -40,24 +45,9 @@ const PrefeiturasSlugRoute = PrefeiturasSlugRouteImport.update({
   path: '/prefeituras/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicTornadoesRoute = ApiPublicTornadoesRouteImport.update({
-  id: '/api/public/tornadoes',
-  path: '/api/public/tornadoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicOpenaqRoute = ApiPublicOpenaqRouteImport.update({
-  id: '/api/public/openaq',
-  path: '/api/public/openaq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicFirmsRoute = ApiPublicFirmsRouteImport.update({
-  id: '/api/public/firms',
-  path: '/api/public/firms',
+const ApiPublicCyclonesRoute = ApiPublicCyclonesRouteImport.update({
+  id: '/api/public/cyclones',
+  path: '/api/public/cyclones',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEnsoRoute = ApiPublicEnsoRouteImport.update({
@@ -65,9 +55,19 @@ const ApiPublicEnsoRoute = ApiPublicEnsoRouteImport.update({
   path: '/api/public/enso',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicCyclonesRoute = ApiPublicCyclonesRouteImport.update({
-  id: '/api/public/cyclones',
-  path: '/api/public/cyclones',
+const ApiPublicFirmsRoute = ApiPublicFirmsRouteImport.update({
+  id: '/api/public/firms',
+  path: '/api/public/firms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicOpenaqRoute = ApiPublicOpenaqRouteImport.update({
+  id: '/api/public/openaq',
+  path: '/api/public/openaq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTornadoesRoute = ApiPublicTornadoesRouteImport.update({
+  id: '/api/public/tornadoes',
+  path: '/api/public/tornadoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -162,6 +162,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -169,11 +176,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prefeituras/': {
@@ -190,32 +197,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrefeiturasSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/tornadoes': {
-      id: '/api/public/tornadoes'
-      path: '/api/public/tornadoes'
-      fullPath: '/api/public/tornadoes'
-      preLoaderRoute: typeof ApiPublicTornadoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/openaq': {
-      id: '/api/public/openaq'
-      path: '/api/public/openaq'
-      fullPath: '/api/public/openaq'
-      preLoaderRoute: typeof ApiPublicOpenaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/firms': {
-      id: '/api/public/firms'
-      path: '/api/public/firms'
-      fullPath: '/api/public/firms'
-      preLoaderRoute: typeof ApiPublicFirmsRouteImport
+    '/api/public/cyclones': {
+      id: '/api/public/cyclones'
+      path: '/api/public/cyclones'
+      fullPath: '/api/public/cyclones'
+      preLoaderRoute: typeof ApiPublicCyclonesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/enso': {
@@ -225,11 +211,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEnsoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cyclones': {
-      id: '/api/public/cyclones'
-      path: '/api/public/cyclones'
-      fullPath: '/api/public/cyclones'
-      preLoaderRoute: typeof ApiPublicCyclonesRouteImport
+    '/api/public/firms': {
+      id: '/api/public/firms'
+      path: '/api/public/firms'
+      fullPath: '/api/public/firms'
+      preLoaderRoute: typeof ApiPublicFirmsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/openaq': {
+      id: '/api/public/openaq'
+      path: '/api/public/openaq'
+      fullPath: '/api/public/openaq'
+      preLoaderRoute: typeof ApiPublicOpenaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/tornadoes': {
+      id: '/api/public/tornadoes'
+      path: '/api/public/tornadoes'
+      fullPath: '/api/public/tornadoes'
+      preLoaderRoute: typeof ApiPublicTornadoesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
