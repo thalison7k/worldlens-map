@@ -5,4 +5,4 @@
 - [x] Persistir uma única prefeitura monitorada em todos os aparelhos.
 - [x] Adicionar avisos oficiais de tornados aos alertas e ao mapa.
 - [x] Corrigir toque, rolagem e botões no Android.
-- [ ] Validar em celular e desktop.
+- [x] Validar em celular e desktop.
