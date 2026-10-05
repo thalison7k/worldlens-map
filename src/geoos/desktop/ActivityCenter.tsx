@@ -10,7 +10,10 @@ import {
   Trash2,
   CheckCheck,
   Eraser,
+  History,
 } from "lucide-react";
+import { loadHistory, clearHistory, HISTORY_EVENT, type AlertHistoryEntry } from "@/geoos/core/alert-history";
+import { LEVEL_STYLE } from "@/lib/gis/alerts";
 
 const ICONS = { info: Info, warn: AlertTriangle, error: AlertCircle, success: CheckCircle2 };
 const COLORS = {
@@ -20,7 +23,7 @@ const COLORS = {
   success: "hsl(155 60% 55%)",
 };
 
-type Filter = "all" | "unread" | "saved";
+type Filter = "all" | "unread" | "saved" | "history";
 
 export function ActivityCenter() {
   const open = useGeoOS((s) => s.activityOpen);
@@ -37,6 +40,27 @@ export function ActivityCenter() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  const [history, setHistory] = useState<AlertHistoryEntry[]>([]);
+  const [histMuni, setHistMuni] = useState<string>("");
+  useEffect(() => {
+    const load = () => setHistory(loadHistory());
+    load();
+    window.addEventListener(HISTORY_EVENT, load);
+    return () => window.removeEventListener(HISTORY_EVENT, load);
+  }, []);
+  const histMunis = useMemo(() => [...new Set(history.map((h) => h.municipality))].sort(), [history]);
+  const activeMuni = histMuni && histMunis.includes(histMuni) ? histMuni : histMunis[0] ?? "";
+  const histDays = useMemo(() => {
+    const items = history.filter((h) => h.municipality === activeMuni).sort((a, b) => b.detectedTs - a.detectedTs);
+    const map = new Map<string, AlertHistoryEntry[]>();
+    for (const h of items) {
+      const d = new Date(h.detectedTs).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+      map.set(d, [...(map.get(d) ?? []), h]);
+    }
+    return [...map.entries()];
+  }, [history, activeMuni]);
+  const fmt = (t: number) => new Date(t).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
   const unread = notifs.filter((n) => !n.read).length;
   const savedCount = notifs.filter((n) => n.saved).length;
@@ -80,6 +104,7 @@ export function ActivityCenter() {
     { id: "all", label: "Todas", count: notifs.length },
     { id: "unread", label: "Não lidas", count: unread },
     { id: "saved", label: "Salvas", count: savedCount },
+    { id: "history", label: "Histórico", count: history.length },
   ];
 
 
@@ -120,6 +145,62 @@ export function ActivityCenter() {
         ))}
       </div>
 
+      {filter === "history" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <History className="h-3.5 w-3.5 text-white/50" />
+            <select
+              value={activeMuni}
+              onChange={(e) => setHistMuni(e.target.value)}
+              className="min-h-[36px] flex-1 rounded-md border border-white/10 bg-[color:var(--geoos-surface)] px-2 text-[11px] text-white"
+            >
+              {histMunis.length === 0 && <option value="">Nenhum município</option>}
+              {histMunis.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+            {activeMuni && (
+              <button
+                onClick={() => clearHistory(activeMuni)}
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-md border border-red-400/30 px-2 text-[10px] text-red-300 hover:bg-red-500/15"
+              >
+                <Trash2 className="h-3 w-3" /> Limpar
+              </button>
+            )}
+          </div>
+          <div className="flex-1 space-y-3 overflow-y-auto px-3 pb-6">
+            {histDays.length === 0 && (
+              <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-center text-[11px] text-white/50">
+                O histórico é registrado automaticamente a cada varredura da prefeitura monitorada (a cada 5 min).
+              </p>
+            )}
+            {histDays.map(([day, items]) => (
+              <section key={day}>
+                <div className="mb-1 flex items-center gap-2">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-white/55">{day}</h4>
+                  <span className="text-[9px] text-white/40">{items.length} alertas</span>
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
+                <ol className="space-y-1.5 border-l border-white/10 pl-3">
+                  {items.map((h) => (
+                    <li key={h.key} className="relative rounded-md border border-white/10 bg-white/[0.03] p-2">
+                      <span className="absolute -left-[17px] top-3 h-2 w-2 rounded-full" style={{ background: LEVEL_STYLE[h.level].color }} />
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-medium text-white/90">{h.title}</span>
+                        <span className="shrink-0 rounded px-1 text-[9px] font-semibold uppercase" style={{ color: LEVEL_STYLE[h.level].color }}>
+                          {LEVEL_STYLE[h.level].label}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-[10px] text-white/55">{h.detail}</div>
+                      <div className="mt-1 text-[9px] text-white/40">
+                        Detectado {fmt(h.detectedTs)} · Evento {fmt(h.eventTs)}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </div>
+      ) : (<>
       <div className="flex items-center gap-2 px-3 py-2">
         <button
           onClick={markAll}
@@ -235,6 +316,7 @@ export function ActivityCenter() {
           </section>
         ))}
       </div>
+      </>)}
     </aside>
   );
 }
