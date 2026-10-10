@@ -6,6 +6,7 @@ import { WORKSPACES } from "@/geoos/core/workspaces";
 import { THEME_VARIANTS, getCurrentVariant } from "@/geoos/core/theme";
 import { bus } from "@/geoos/core/bus";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { InstallDialog } from "./InstallDialog";
 import { GamaTecBadge } from "./GamaTecBadge";
 
 export function Topbar() {
