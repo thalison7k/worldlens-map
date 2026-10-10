@@ -33,7 +33,10 @@ export function InstallDialog({
   const platformLabel =
     platform === "ios" ? "iPhone / iPad" : platform === "android" ? "Android" : "Computador";
 
-  return (
+  // Rendered via portal: the Topbar's backdrop-blur creates a containing block
+  // that would otherwise clip this fixed-position dialog to the 44px header.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
       onClick={onClose}
