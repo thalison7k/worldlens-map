@@ -85,7 +85,7 @@ export function Topbar() {
         </Link>
         {canInstall && (
           <button
-            onClick={() => void install()}
+            onClick={() => void onInstallClick()}
             className="flex h-8 items-center gap-1.5 rounded-lg border border-[color:var(--geoos-accent)]/40 bg-[color:var(--geoos-accent)]/15 px-2.5 text-[11px] font-medium text-white hover:bg-[color:var(--geoos-accent)]/25"
             title="Instalar como app (mobile ou desktop)"
           >
