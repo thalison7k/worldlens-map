@@ -167,6 +167,9 @@ export function Topbar() {
           {time.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
+      {installOpen && (
+        <InstallDialog platform={platform} native={native} onClose={() => setInstallOpen(false)} />
+      )}
     </header>
   );
 }
