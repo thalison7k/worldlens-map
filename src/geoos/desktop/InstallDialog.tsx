@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Download, Share, MoreVertical, Monitor, Smartphone, X } from "lucide-react";
 import type { InstallPlatform } from "@/hooks/use-pwa-install";
 
