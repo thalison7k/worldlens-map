@@ -28,7 +28,13 @@ export function Topbar() {
 
   const [paletteOpen, setThemePalette] = useState(false);
   const [variant, setVariant] = useState<string>(() => getCurrentVariant());
-  const { canInstall, install } = usePWAInstall();
+  const { canInstall, native, platform, install } = usePWAInstall();
+  const [installOpen, setInstallOpen] = useState(false);
+
+  const onInstallClick = async () => {
+    const result = await install();
+    if (result === "manual") setInstallOpen(true);
+  };
 
   // fecha o seletor de temas ao clicar fora ou apertar Esc
   useEffect(() => {
