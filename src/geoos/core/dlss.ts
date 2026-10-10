@@ -51,8 +51,8 @@ export function nextMode(mode: DLSSMode): DLSSMode {
 export function superSampling(mode: DLSSMode): boolean {
   if (typeof window === "undefined") return false;
   if (mode === "off" || mode === "balanced") return false;
-  // Em telas já retina, "quality" mantém 1x lógico e "ultra" força 2x.
-  return mode === "ultra" || (window.devicePixelRatio || 1) < 1.5;
+  // Quality/Ultra pedem tiles de alta densidade em telas retina (mais nítido).
+  return mode === "ultra" || (window.devicePixelRatio || 1) >= 1.5;
 }
 
 /** Fator de nitidez aplicado por CSS após o upscaling. */

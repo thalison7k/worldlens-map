@@ -68,9 +68,12 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       zoomAnimation: !isMobile,
       fadeAnimation: !isMobile,
       markerZoomAnimation: !isMobile,
-      wheelDebounceTime: isMobile ? 60 : 40,
-      wheelPxPerZoomLevel: isMobile ? 90 : 60,
-      zoomSnap: isMobile ? 0.5 : 0.25,
+      // Zoom em níveis inteiros: tiles nítidos (frações deixavam a imagem borrada)
+      wheelDebounceTime: 40,
+      wheelPxPerZoomLevel: 120,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      bounceAtZoomLimits: false,
     });
     mapRef.current = map;
     // Sem controle de atribuição: nenhuma marca d'água sobre o mapa.
@@ -156,13 +159,20 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
     if (baseRef.current) map.removeLayer(baseRef.current);
     if (overlayRef.current) { map.removeLayer(overlayRef.current); overlayRef.current = null; }
     const ss = superSampling(dlss);
+    // Limita o zoom a 3 níveis acima do nativo do provedor: além disso a
+    // imagem fica só pixelada (ex.: satélite nativo z14).
+    const native = cfg.maxZoom ?? 19;
+    const cap = Math.min(MAP_MAX_ZOOM, native + 3);
+    map.setMaxZoom(cap);
+    if (map.getZoom() > cap) map.setZoom(cap);
     baseRef.current = safeTileLayer(cfg.url, {
       // Sem `attribution`: o mapa não exibe marca d'água de provedor.
       // cfg.maxZoom é o último nível publicado pelo provedor → nativo.
-      maxNativeZoom: cfg.maxZoom ?? 19,
-      updateWhenIdle: true,
-      updateWhenZooming: !isMobile,
-      detectRetina: ss,
+      maxNativeZoom: native,
+      maxZoom: cap,
+      updateWhenIdle: isMobile,
+      updateWhenZooming: false,
+      detectRetina: ss && native >= 17,
       keepBuffer: dlss === "ultra" ? 4 : 2,
       // `subdomains: undefined` sobrescreveria o padrão do Leaflet e quebraria
       // `_getSubdomain` (tiles inválidos / marca d'água do provedor).

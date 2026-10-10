@@ -477,6 +477,20 @@ body { touch-action: manipulation; }
   background: var(--geoos-surface);
   color: var(--geoos-text);
 }
+:root[data-theme-variant="arctic"] .geoos-window,
+:root[data-theme-variant="arctic"] body { color: var(--geoos-text); }
+:root[data-theme-variant="arctic"] input::placeholder,
+:root[data-theme-variant="arctic"] textarea::placeholder {
+  color: color-mix(in oklab, var(--geoos-text) 45%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="bg-black\/"] {
+  background-color: color-mix(in oklab, var(--geoos-text) 8%, transparent);
+}
+:root[data-theme-variant="arctic"] [class*="divide-white"] > * + * {
+  border-color: color-mix(in oklab, var(--geoos-text) 12%, transparent);
+}
+:root[data-theme-variant="arctic"] select option { background: var(--geoos-surface); color: var(--geoos-text); }
+:root[data-theme-variant]:not([data-theme-variant="arctic"]) select option { background: var(--geoos-surface); color: var(--geoos-text); }
 
 /* Transições suaves ao trocar de tema, sem custo em animações de mapa */
 :root:not(.geoos-no-transition) body,
@@ -486,8 +500,8 @@ body { touch-action: manipulation; }
 }
 
 /* ── DLSS 5 — Deep Layer Super Sampling ─────────────────────────────── */
+/* will-change nos tiles forçava rasterização em baixa resolução → borrão no zoom */
 .leaflet-container[class*="geoos-dlss-"] .leaflet-tile {
-  will-change: transform;
   backface-visibility: hidden;
 }
 .leaflet-container.geoos-dlss-off .leaflet-tile { image-rendering: auto; }

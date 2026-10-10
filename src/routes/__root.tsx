@@ -125,6 +125,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Tema aplicado em todas as páginas (inclusive Prefeituras), não só no mapa.
+  useEffect(() => {
+    import("@/geoos/core/theme").then((m) => m.startThemeEngine());
+  }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
