@@ -6,6 +6,7 @@ import { WORKSPACES } from "@/geoos/core/workspaces";
 import { THEME_VARIANTS, getCurrentVariant } from "@/geoos/core/theme";
 import { bus } from "@/geoos/core/bus";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { InstallDialog } from "./InstallDialog";
 import { GamaTecBadge } from "./GamaTecBadge";
 
 export function Topbar() {
@@ -28,7 +29,13 @@ export function Topbar() {
 
   const [paletteOpen, setThemePalette] = useState(false);
   const [variant, setVariant] = useState<string>(() => getCurrentVariant());
-  const { canInstall, install } = usePWAInstall();
+  const { canInstall, native, platform, install } = usePWAInstall();
+  const [installOpen, setInstallOpen] = useState(false);
+
+  const onInstallClick = async () => {
+    const result = await install();
+    if (result === "manual") setInstallOpen(true);
+  };
 
   // fecha o seletor de temas ao clicar fora ou apertar Esc
   useEffect(() => {
@@ -79,7 +86,7 @@ export function Topbar() {
         </Link>
         {canInstall && (
           <button
-            onClick={() => void install()}
+            onClick={() => void onInstallClick()}
             className="flex h-8 items-center gap-1.5 rounded-lg border border-[color:var(--geoos-accent)]/40 bg-[color:var(--geoos-accent)]/15 px-2.5 text-[11px] font-medium text-white hover:bg-[color:var(--geoos-accent)]/25"
             title="Instalar como app (mobile ou desktop)"
           >
@@ -161,6 +168,9 @@ export function Topbar() {
           {time.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
+      {installOpen && (
+        <InstallDialog platform={platform} native={native} onClose={() => setInstallOpen(false)} />
+      )}
     </header>
   );
 }
