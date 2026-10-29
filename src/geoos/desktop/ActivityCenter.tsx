@@ -323,3 +323,23 @@ export function ActivityCenter() {
     </aside>
   );
 }
+
+function VoiceToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    setOn(localStorage.getItem("geoos.notif.voice") !== "off");
+  }, []);
+  return (
+    <button
+      onClick={() => {
+        const next = !on;
+        setOn(next);
+        localStorage.setItem("geoos.notif.voice", next ? "on" : "off");
+      }}
+      title={on ? "Voz da IA ligada" : "Voz da IA desligada"}
+      className="grid h-7 min-w-7 place-items-center rounded-md px-1.5 text-[10px] text-white/60 hover:bg-white/10"
+    >
+      {on ? "🔊 Voz" : "🔇 Voz"}
+    </button>
+  );
+}
