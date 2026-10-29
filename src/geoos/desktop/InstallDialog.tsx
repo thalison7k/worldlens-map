@@ -92,8 +92,8 @@ export function InstallDialog({
             Funciona offline nas telas já visitadas e abre como app nativo.
           </p>
         </div>
-      </div>,
-      document.body,
-    ),
+      </div>
+    </div>,
+    document.body,
   );
 }
