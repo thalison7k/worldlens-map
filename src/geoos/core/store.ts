@@ -48,6 +48,36 @@ function readStored(): Notification[] {
   }
 }
 
+/** Notificações não salvas somem da Central após este tempo. */
+export const NOTIF_TTL_MS = 30 * 60 * 1000;
+
+function pruneExpired(list: Notification[]): Notification[] {
+  const cutoff = Date.now() - NOTIF_TTL_MS;
+  return list.filter((n) => n.saved || (n.ts ?? 0) >= cutoff);
+}
+
+let announceQueue: Notification[] = [];
+let announceTimer: ReturnType<typeof setTimeout> | null = null;
+function announce(n: Notification) {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem("geoos.notif.voice") === "off") return;
+  announceQueue.push(n);
+  if (announceTimer) return;
+  announceTimer = setTimeout(async () => {
+    const batch = announceQueue;
+    announceQueue = [];
+    announceTimer = null;
+    const { speak, isSpeaking } = await import("./speech");
+    if (isSpeaking()) return;
+    const first = batch[0];
+    const text =
+      batch.length === 1
+        ? `Nova notificação do Geo AI: ${first.title}. ${first.message ?? ""}`
+        : `Geo AI: você tem ${batch.length} novas notificações. A primeira: ${first.title}.`;
+    speak(text);
+  }, 1500);
+}
+
 function persist(list: Notification[]) {
   try {
     localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(0, 120)));
@@ -161,10 +191,9 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
   addNotification: (n) =>
     set((s) => {
       if (n.dedupeKey && s.notifications.some((x) => x.dedupeKey === n.dedupeKey)) return s;
-      const notifications = persist([
-        { id: Math.random().toString(36).slice(2), ts: Date.now(), ...n },
-        ...s.notifications,
-      ].slice(0, 120));
+      const item = { id: Math.random().toString(36).slice(2), ts: Date.now(), ...n } as Notification;
+      const notifications = persist(pruneExpired([item, ...s.notifications]).slice(0, 120));
+      announce(item);
       return { notifications };
     }),
   markAllRead: () =>
@@ -186,8 +215,15 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
       notifications: persist(opts?.keepSaved ? s.notifications.filter((n) => n.saved) : []),
     })),
   hydrateNotifications: () => {
-    const stored = readStored();
-    if (stored.length) set({ notifications: stored });
+    const stored = pruneExpired(readStored());
+    set({ notifications: persist(stored) });
+    if (typeof window !== "undefined" && !(window as any).__geoosNotifPrune) {
+      (window as any).__geoosNotifPrune = setInterval(() => {
+        const cur = get().notifications;
+        const next = pruneExpired(cur);
+        if (next.length !== cur.length) set({ notifications: persist(next) });
+      }, 60_000);
+    }
   },
   setActivity: (open) => set({ activityOpen: open }),
   setPalette: (open) => set({ paletteOpen: open }),
