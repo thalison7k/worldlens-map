@@ -49,7 +49,7 @@ function readStored(): Notification[] {
 }
 
 /** Notificações não salvas somem da Central após este tempo. */
-export const NOTIF_TTL_MS = 30 * 60 * 1000;
+export const NOTIF_TTL_MS = 5 * 60 * 1000;
 
 function pruneExpired(list: Notification[]): Notification[] {
   const cutoff = Date.now() - NOTIF_TTL_MS;
@@ -93,7 +93,7 @@ function announce(n: Notification) {
         ? `Nova notificação do Geo AI: ${first.title}. ${first.message ?? ""}`
         : `Geo AI: você tem ${batch.length} novas notificações. A primeira: ${first.title}.`;
     speak(text);
-  }, 1500);
+  }, 300);
 }
 
 function persist(list: Notification[]) {
@@ -240,7 +240,7 @@ export const useGeoOS = create<State & Actions>((set, get) => ({
         const cur = get().notifications;
         const next = pruneExpired(cur);
         if (next.length !== cur.length) set({ notifications: persist(next) });
-      }, 60_000);
+      }, 15_000);
     }
   },
   setActivity: (open) => set({ activityOpen: open }),
