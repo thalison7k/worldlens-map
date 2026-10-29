@@ -56,6 +56,23 @@ function pruneExpired(list: Notification[]): Notification[] {
   return list.filter((n) => n.saved || (n.ts ?? 0) >= cutoff);
 }
 
+// Navegadores só liberam a voz após um toque/clique: "desbloqueia" no primeiro gesto.
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  const unlock = () => {
+    try {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    } catch {
+      /* noop */
+    }
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
+}
+
 let announceQueue: Notification[] = [];
 let announceTimer: ReturnType<typeof setTimeout> | null = null;
 function announce(n: Notification) {
@@ -68,7 +85,8 @@ function announce(n: Notification) {
     announceQueue = [];
     announceTimer = null;
     const { speak, isSpeaking } = await import("./speech");
-    if (isSpeaking()) return;
+    // Espera a fala atual terminar em vez de descartar o anúncio.
+    for (let i = 0; i < 60 && isSpeaking(); i++) await new Promise((r) => setTimeout(r, 500));
     const first = batch[0];
     const text =
       batch.length === 1
