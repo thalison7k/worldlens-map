@@ -121,12 +121,15 @@ export function ActivityCenter() {
             {notifs.length} eventos · {unread} não lidos
           </p>
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-white/10"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <VoiceToggle />
+          <button
+            onClick={() => setOpen(false)}
+            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-white/10"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-1 px-3 pt-3">
