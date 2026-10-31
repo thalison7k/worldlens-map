@@ -346,8 +346,11 @@ export default function AIAssistantApp() {
       <div className="flex items-start justify-between gap-2 border-b border-white/10 px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 animate-pulse text-[color:var(--geoos-accent)]" />
-            <h3 className="truncate text-sm font-semibold">Geo AI · Analista Ambiental Sênior</h3>
+            <GeoAvatar
+              size={40}
+              mood={speakingIdx !== null || phase === "streaming" ? "talking" : phase === "idle" ? "idle" : "thinking"}
+            />
+            <h3 className="truncate text-sm font-semibold">Gaia · Geo AI Ambiental</h3>
           </div>
           <p className="mt-0.5 truncate text-[11px] text-white/50">
             {activeLayers.length} camada{activeLayers.length === 1 ? "" : "s"} · centro {center.lat.toFixed(2)},{" "}
