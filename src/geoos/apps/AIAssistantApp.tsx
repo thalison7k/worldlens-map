@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GeoAvatar } from "./GeoAvatar";
 import { Send, Sparkles, Square, Trash2, AlertTriangle, RefreshCw, Download, Volume2, VolumeX } from "lucide-react";
 import { isVoiceEnabled, setVoiceEnabled, speak, speechSupported, speechText, stopSpeech } from "@/geoos/core/speech";
 
