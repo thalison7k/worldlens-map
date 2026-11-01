@@ -12,6 +12,8 @@ import { resolveBase, type BaseView } from "@/lib/gis/providers";
 import type { BuiltLayer, LayerDef, OccurrenceFilters, Timeframe } from "@/lib/gis/layer-defs";
 import { REAL_LAYER_DEFS, BBOX_DRIVEN_LAYERS, SELF_REFRESHING_LAYERS } from "@/lib/gis/real-layers";
 import type { BBox } from "@/lib/gis/simulated";
+import { ImmersiveView, type ImmersiveCamera } from "./ImmersiveView";
+import { shouldEnterImmersive } from "@/geoos/core/immersive";
 
 // GeoOS is scoped to environmental monitoring only — the map exposes strictly
 // the real-data environmental layers (USGS · OpenAQ · NOAA ONI). Any legacy
@@ -52,6 +54,9 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
   const [dlss, setDlss] = useState<DLSSMode>(() => loadMode());
   const dlssRef = useRef<DLSSMode>(dlss);
   const [globe, setGlobe] = useState(false);
+  const globeRef = useRef(false);
+  const immersiveDismissed = useRef(false);
+  const [immersive, setImmersive] = useState<ImmersiveCamera | null>(null);
   
 
   // create map once
@@ -76,6 +81,14 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       bounceAtZoomLimits: false,
     });
     mapRef.current = map;
+    map.on("zoomend", () => {
+      const zoom = map.getZoom();
+      if (zoom < 14) immersiveDismissed.current = false;
+      if (shouldEnterImmersive(zoom, globeRef.current, immersiveDismissed.current)) {
+        const center = map.getCenter();
+        setImmersive({ lat: center.lat, lng: center.lng, zoom });
+      }
+    });
     // Sem controle de atribuição: nenhuma marca d'água sobre o mapa.
     applyDLSS(map.getContainer(), dlssRef.current);
 
@@ -396,6 +409,8 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
       const m = mapRef.current;
       if (!m || on === globeOn) return;
       globeOn = on;
+      globeRef.current = on;
+      if (on) setImmersive(null);
       const c = m.getContainer();
       c.classList.toggle("geoos-globe", on);
       setGlobe(on);
@@ -467,6 +482,11 @@ export function MapKernel({ theme }: { theme: "dark" | "light" }) {
 
   return (
     <>
+      {immersive && <ImmersiveView initial={immersive} onClose={(camera) => {
+        immersiveDismissed.current = true;
+        setImmersive(null);
+        mapRef.current?.setView([camera.lat, camera.lng], camera.zoom, { animate: false });
+      }} />}
       {globe && <div className="geoos-globe-space" aria-hidden />}
       <div ref={el} className="fixed inset-0 z-0" aria-label="MapKernel" />
       {globe && (
