@@ -145,6 +145,11 @@
 
 /* GIS module tokens */
 :root {
+  --gaia-ocean-light: oklch(0.8 0.1 210);
+  --gaia-ocean: oklch(0.58 0.13 230);
+  --gaia-depth: oklch(0.23 0.06 240);
+  --gaia-land: oklch(0.76 0.17 150);
+  --gaia-eye: oklch(0.99 0.005 200);
   --gis-bg: oklch(0.18 0.03 250);
   --gis-panel: oklch(0.22 0.03 250 / 0.92);
   --gis-panel-border: oklch(1 0 0 / 0.08);
