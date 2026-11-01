@@ -70,7 +70,7 @@ export function ImmersiveView({ initial, onClose }: {
 
   return (
     <section className="immersive-view fixed inset-0 z-50 bg-background text-foreground" aria-label="Visão imersiva da localidade">
-      <div ref={host} className="absolute inset-0" />
+      <div className="absolute inset-0"><div ref={host} className="h-full w-full" /></div>
       <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2">
         <div className="rounded-md border border-border bg-background/95 px-3 py-2">
           <h2 className="text-sm font-semibold">Immersive View · Cartografia 3D</h2>
