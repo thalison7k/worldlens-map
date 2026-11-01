@@ -7,6 +7,6 @@
 - [x] Corrigir toque, rolagem e botões no Android.
 - [x] Validar em celular e desktop.
 - [x] Personagem animado da IA no chat Geo AI (só lá)
-- [ ] Visão imersiva por zoom na localidade, com cartografia real.
-- [ ] Melhorar animações da Gaia somente no chat.
-- [ ] Validar entrada e saída da visão imersiva e animações.
+- [x] Visão imersiva por zoom na localidade, com cartografia real.
+- [x] Melhorar animações da Gaia somente no chat.
+- [x] Validar entrada e saída da visão imersiva e animações.
