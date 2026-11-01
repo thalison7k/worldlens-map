@@ -1,17 +1,18 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { strict as assert } from "node:assert";
 import { shouldEnterImmersive, shouldExitImmersive } from "./immersive";
 
 describe("locality immersive transitions", () => {
   test("enters only at close zoom", () => {
-    expect(shouldEnterImmersive(16, false, false)).toBe(true);
-    expect(shouldEnterImmersive(15, false, false)).toBe(false);
+    assert.equal(shouldEnterImmersive(16, false, false), true);
+    assert.equal(shouldEnterImmersive(15, false, false), false);
   });
   test("never enters in timeline globe or after dismissal", () => {
-    expect(shouldEnterImmersive(18, true, false)).toBe(false);
-    expect(shouldEnterImmersive(18, false, true)).toBe(false);
+    assert.equal(shouldEnterImmersive(18, true, false), false);
+    assert.equal(shouldEnterImmersive(18, false, true), false);
   });
   test("exits when zooming out without boundary flicker", () => {
-    expect(shouldExitImmersive(13)).toBe(true);
-    expect(shouldExitImmersive(14)).toBe(false);
+    assert.equal(shouldExitImmersive(13), true);
+    assert.equal(shouldExitImmersive(14), false);
   });
 });
